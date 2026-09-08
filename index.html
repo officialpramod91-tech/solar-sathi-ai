@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar Sathi - AI Consultant</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+        body { background: #f0f2f5; min-height: 100vh; }
+
+        /* Floating Toggle Launcher */
+        .chat-launcher {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #e65100, #ff9800);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            box-shadow: 0 8px 24px rgba(230, 81, 0, 0.35);
+            cursor: pointer;
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+        }
+        .chat-launcher:hover { transform: scale(1.08); }
+
+        /* Main Container */
+        .chat-container {
+            position: fixed;
+            bottom: 96px;
+            right: 24px;
+            width: 400px;
+            max-width: calc(100vw - 32px);
+            height: 600px;
+            max-height: calc(100vh - 120px);
+            background: #ffffff;
+            border-radius: 20px;
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            z-index: 999;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .chat-container.hidden {
+            opacity: 0;
+            transform: translateY(20px) scale(0.95);
+            pointer-events: none;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #e65100, #ff9800);
+            color: white;
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .header h1 { font-size: 1.1rem; font-weight: 700; line-height: 1.2; }
+        .header p { font-size: 0.78rem; opacity: 0.92; }
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 22px;
+            cursor: pointer;
+            padding: 4px;
+            line-height: 1;
+            opacity: 0.8;
+        }
+        .close-btn:hover { opacity: 1; }
+
+        .messages-box {
+            flex: 1;
+            padding: 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: #fafbfc;
+        }
+        .msg {
+            max-width: 82%;
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 0.92rem;
+            line-height: 1.45;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+        .bot {
+            background: #ffffff;
+            color: #1e293b;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
+            border: 1px solid #f1f3f5;
+        }
+        .user {
+            background: #e65100;
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 2px 6px rgba(230,81,0,0.2);
+        }
+
+        /* Interactive Quick Action Chips */
+        .chips-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 4px;
+            align-self: flex-start;
+        }
+        .chip-btn {
+            background: #fff3e0;
+            color: #e65100;
+            border: 1px solid #ffcc80;
+            border-radius: 20px;
+            padding: 7px 14px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .chip-btn:hover {
+            background: #ffe0b2;
+            transform: translateY(-1px);
+        }
+
+        .input-area {
+            display: flex;
+            padding: 12px 16px;
+            background: #ffffff;
+            border-top: 1px solid #edf2f7;
+            gap: 8px;
+        }
+        input {
+            flex: 1;
+            padding: 11px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 24px;
+            outline: none;
+            font-size: 0.92rem;
+            transition: border-color 0.2s;
+        }
+        input:focus { border-color: #e65100; }
+        .send-btn {
+            background: #e65100;
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 24px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.88rem;
+            transition: background 0.15s;
+        }
+        .send-btn:hover { background: #bf360c; }
+        .send-btn:disabled { background: #cbd5e1; cursor: not-allowed; }
+
+        .typing-indicator { display: flex; align-items: center; gap: 4px; padding: 12px 16px; width: fit-content; }
+        .dot { width: 6px; height: 6px; background-color: #94a3b8; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
+        .dot:nth-child(1) { animation-delay: -0.32s; }
+        .dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
+        @media (max-width: 480px) {
+            .chat-container {
+                right: 0;
+                bottom: 0;
+                width: 100vw;
+                height: 100vh;
+                max-height: 100vh;
+                border-radius: 0;
+            }
+            .chat-launcher { bottom: 16px; right: 16px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="chat-launcher" onclick="toggleChat()">☀️</div>
+
+<div class="chat-container" id="chatContainer">
+    <div class="header">
+        <div class="header-left">
+            <div style="font-size: 1.8rem;">☀️</div>
+            <div>
+                <h1>Solar Sathi</h1>
+                <p>Instant Quote & PM Surya Ghar Subsidy</p>
+            </div>
+        </div>
+        <button class="close-btn" onclick="toggleChat()">×</button>
+    </div>
+
+    <div class="messages-box" id="chatBox">
+        <div class="msg bot">Namaste! 🙏 Main Solar Sathi hoon. Main aapke electricity bill ke hisaab se best solar system aur government subsidy calculate karne mein madad karunga.
+
+Aapka monthly electricity bill lagbhag kitna aata hai? (e.g. 3000)</div>
+    </div>
+
+    <div class="input-area">
+        <input type="text" id="userInput" placeholder="Apna jawab likhein..." onkeypress="handleKey(event)">
+        <button class="send-btn" id="sendBtn" onclick="sendMessage()">Send</button>
+    </div>
+</div>
+
+<script>
+    let conversationHistory = [];
+
+    function toggleChat() {
+        const c = document.getElementById("chatContainer");
+        c.classList.toggle("hidden");
+        if (!c.classList.contains("hidden")) {
+            document.getElementById("userInput").focus();
+        }
+    }
+
+    async function sendMessage(presetText = null) {
+        const inputField = document.getElementById("userInput");
+        const sendBtn = document.getElementById("sendBtn");
+        const message = presetText ? presetText.trim() : inputField.value.trim();
+        if (!message) return;
+
+        appendMessage("user", message);
+        if (!presetText) inputField.value = "";
+        sendBtn.disabled = true;
+
+        // Remove active quick chips after selection
+        removeActiveChips();
+
+        const typingId = appendTypingIndicator();
+
+        try {
+            const response = await fetch("http://127.0.0.1:8000/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    message: message,
+                    history: conversationHistory
+                })
+            });
+
+            const data = await response.json();
+            const typingElement = document.getElementById(typingId);
+            if (typingElement) typingElement.remove();
+
+            const botReply = data.reply || "Maaf kijiye, koi technical dikkat aayi.";
+            appendMessage("bot", botReply);
+
+            // Trigger contextual chips
+            renderContextualChips(botReply);
+
+            conversationHistory.push({ sender: "user", text: message });
+            conversationHistory.push({ sender: "bot", text: botReply });
+
+        } catch (error) {
+            const typingElement = document.getElementById(typingId);
+            if (typingElement) typingElement.remove();
+            appendMessage("bot", "Network Error: Backend server offline hai ya connect nahi ho pa raha.");
+        } finally {
+            sendBtn.disabled = false;
+        }
+    }
+
+    function renderContextualChips(reply) {
+        const lower = reply.toLowerCase();
+        let options = [];
+
+        if (lower.includes("ghar ke liye") && lower.includes("dukan")) {
+            options = [
+                { label: "🏠 Ghar ke liye", val: "ghar ke liye" },
+                { label: "🏢 Dukan / Commercial", val: "dukan ke liye" }
+            ];
+        } else if (lower.includes("on-grid") && lower.includes("hybrid")) {
+            options = [
+                { label: "☀️ On-Grid (Bill Kam)", val: "on-grid" },
+                { label: "🔋 Hybrid (Power Backup)", val: "hybrid" },
+                { label: "❓ Farak samjhao", val: "hybrid system kya hai" }
+            ];
+        } else if (lower.includes("dhanyawad") && lower.includes("note ho gayi")) {
+            options = [
+                { label: "💳 EMI / Loan Options", val: "EMI options kya hain?" },
+                { label: "📄 Documents List", val: "Kaun kaun se document lagenge?" },
+                { label: "⚡ Daily Generation (Units)", val: "Ek din mein kitne units banenge?" }
+            ];
+        }
+
+        if (options.length > 0) {
+            const chatBox = document.getElementById("chatBox");
+            const chipsDiv = document.createElement("div");
+            chipsDiv.className = "chips-container active-chips";
+            options.forEach(opt => {
+                const btn = document.createElement("button");
+                btn.className = "chip-btn";
+                btn.innerText = opt.label;
+                btn.onclick = () => sendMessage(opt.val);
+                chipsDiv.appendChild(btn);
+            });
+            chatBox.appendChild(chipsDiv);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    }
+
+    function removeActiveChips() {
+        document.querySelectorAll(".active-chips").forEach(el => el.remove());
+    }
+
+    function appendMessage(sender, text) {
+        const chatBox = document.getElementById("chatBox");
+        const msgDiv = document.createElement("div");
+        msgDiv.className = `msg ${sender}`;
+        msgDiv.innerText = text;
+        chatBox.appendChild(msgDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function appendTypingIndicator() {
+        const chatBox = document.getElementById("chatBox");
+        const typingDiv = document.createElement("div");
+        const uniqueId = "typing-" + Date.now();
+        typingDiv.id = uniqueId;
+        typingDiv.className = "msg bot typing-indicator";
+        typingDiv.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+        chatBox.appendChild(typingDiv);
+        chatBox.scrollTop = chatBox.scrollHeight;
+        return uniqueId;
+    }
+
+    function handleKey(e) {
+        if (e.key === "Enter") sendMessage();
+    }
+</script>
+
+</body>
+</html>
