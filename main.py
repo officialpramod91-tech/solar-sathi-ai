@@ -1,5 +1,5 @@
 """
-Solar Sathi AI — PRODUCTION FINAL VERSION (v3.3 — Clean Bug-Free Release)
+Solar Sathi AI — PRODUCTION FINAL VERSION (v3.4 — Dynamic kW FAQ Context)
 """
 
 import os
@@ -91,7 +91,7 @@ class ChatRequest(BaseModel):
 
 
 # ------------------------------------------------------------------
-# DETERMINISTIC HELPERS (Placed at Top to Prevent Definition Errors)
+# DETERMINISTIC HELPERS
 # ------------------------------------------------------------------
 
 def estimate_kw_and_subsidy(bill: int):
@@ -308,27 +308,35 @@ ASK_MESSAGES = {
 
 
 # ------------------------------------------------------------------
-# AI FAQ HANDLER
+# AI FAQ HANDLER (DYNAMIC DYNAMIC PROMPT KE SATH)
 # ------------------------------------------------------------------
 
-FAQ_SYSTEM_PROMPT = """
+def build_faq_prompt(kw: Optional[int] = None) -> str:
+    kw_str = f"{kw} kW" if kw else "user ke recommended"
+    return f"""
 Tum 'Solar Sathi' ho, ek friendly solar consultant.
 Customer ne ek general sawal poocha hai.
+Customer ka recommended system size hai: {kw_str}.
 Roman Hinglish mein (Devanagari nahi), 2-3 short lines mein seedha jawab do.
-Concrete answers:
-- 3 kW system lagbhag 12-15 units/day generate karta hai (dhoop ke hisaab se kam-zyada ho sakta hai).
-- 3 kW load par: 1 AC (1.5 ton), fridge, TV, fans aur lights aaram se chalte hain.
-- Hybrid battery: Normally 1 ya 2 battery (150Ah) backup ke liye lagti hain.
+
+Generation aur load ke rules:
+- 1 kW: lagbhag 4-5 units/day generate karta hai. Isse lights, fans, TV aur chhota fridge chal sakta hai.
+- 2 kW: lagbhag 8-10 units/day generate karta hai. Isse fridge, washing machine, cooler, fans aur lights aaram se chalte hain (AC ke bina).
+- 3 kW: lagbhag 12-15 units/day generate karta hai. Isse 1 AC (1.5 ton), fridge, TV, fans aur lights aaram se chalte hain.
+- Hybrid battery: 1-2 kW ke liye normally 1 battery (150Ah) aur 3 kW+ ke liye 1 ya 2 battery (150Ah) backup ke liye lagti hain.
+
+Agar sawal generation ya appliances ka ho, toh STRICTLY {kw_str} system ke according hi figures batao! Dusra size mat bolo.
 Koi unrealistic guarantee mat do.
 """
 
 
-def _call_faq_ai(question: str) -> str:
+def _call_faq_ai(question: str, kw: Optional[int] = None) -> str:
     global FAQ_MODEL
+    system_prompt = build_faq_prompt(kw)
     kwargs = dict(
         model=FAQ_MODEL,
         messages=[
-            {"role": "system", "content": FAQ_SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": question},
         ],
         temperature=0.3,
@@ -360,9 +368,9 @@ def clean_output(text: str) -> str:
     return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
 
 
-async def get_faq_answer(question: str) -> str:
+async def get_faq_answer(question: str, kw: Optional[int] = None) -> str:
     try:
-        raw = await asyncio.to_thread(_call_faq_ai, question)
+        raw = await asyncio.to_thread(_call_faq_ai, question, kw)
         return clean_output(raw) or "Hamari technical team aapse call par detail se discuss karegi."
     except Exception as e:
         print(f"[FAQ AI Error]: {e}")
@@ -492,18 +500,20 @@ async def process_message(history: List[HistoryMessage], message: str, bg_tasks:
     customer_messages = [h.text for h in history if h.sender == "user"] + [message]
     state, outcome, pending_field = build_state(customer_messages)
 
+    current_kw = None
+    if state.get("bill") is not None:
+        current_kw, _ = estimate_kw_and_subsidy(state["bill"])
+
     if outcome is not None and outcome[0] == "filled":
         field_filled = outcome[1]
         complete = all(state[f] is not None for f in FIELD_ORDER)
 
         if state.get("mobile"):
             upsert_lead(state, complete)
-            # PARTIAL LEAD ALERT: Jaise hi mobile number enter ho aur abhi incomplete ho
             if field_filled == "mobile" and not complete:
                 bg_tasks.add_task(send_telegram_alert, state, False)
 
         if complete:
-            # COMPLETE LEAD ALERT: Jab sabhi fields bhar jayein
             bg_tasks.add_task(send_telegram_alert, state, True)
             return build_confirmation(state), state
 
@@ -533,10 +543,10 @@ async def process_message(history: List[HistoryMessage], message: str, bg_tasks:
             else:
                 answer = f"{FAQ_ONGRID}\n\n{FAQ_HYBRID}"
         else:
-            answer = await get_faq_answer(question)
+            answer = await get_faq_answer(question, kw=current_kw)
         return f"{answer}\n\n{ASK_MESSAGES[field]}", None
 
-    # Post-completion handling
+    # Post-completion handling (Jab sab details bhar chuki hon)
     if pending_field is None:
         if is_sensitive_topic(message):
             return (
@@ -558,7 +568,7 @@ async def process_message(history: List[HistoryMessage], message: str, bg_tasks:
             return f"{answer}\n\nHumara installer site visit ke time iski poori detail dega. 🙏", None
 
         if is_question(message):
-            answer = await get_faq_answer(message)
+            answer = await get_faq_answer(message, kw=current_kw)
             return f"{answer}\n\nHumara installer site visit ke time iski poori detail dega. 🙏", None
 
         return "Aapki details already register ho chuki hain. Hamari team jald hi aapse contact karegi. 🙏", None
