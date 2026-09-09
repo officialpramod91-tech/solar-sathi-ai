@@ -1,5 +1,5 @@
 """
-Solar Sathi AI — PRODUCTION FINAL VERSION (v3.4 — Dynamic kW FAQ Context)
+Solar Sathi AI — PRODUCTION FINAL VERSION (v3.5 — Indian Standard Time IST Release)
 """
 
 import os
@@ -7,7 +7,7 @@ import re
 import csv
 import asyncio
 import requests
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import List, Optional
 from dotenv import load_dotenv
 from fastapi import FastAPI, BackgroundTasks
@@ -16,8 +16,11 @@ from pydantic import BaseModel
 from groq import Groq
 
 # ------------------------------------------------------------------
-# SETUP & CONFIGURATION
+# SETUP & CONFIGURATION (INDIAN TIMEZONE SET)
 # ------------------------------------------------------------------
+
+# Indian Standard Time (IST = UTC + 5:30)
+IST = timezone(timedelta(hours=5, minutes=30))
 
 load_dotenv()
 
@@ -113,7 +116,7 @@ def get_priority(bill: Optional[int], complete: bool) -> str:
 
 
 # ------------------------------------------------------------------
-# TELEGRAM ALERT NOTIFIER (Background Task)
+# TELEGRAM ALERT NOTIFIER (Background Task with IST Time)
 # ------------------------------------------------------------------
 
 def send_telegram_alert(state: dict, complete: bool = True):
@@ -143,7 +146,9 @@ def send_telegram_alert(state: dict, complete: bool = True):
     sys_type = state.get("system_type") or "N/A"
     sys_info = f"{kw} kW ({sys_type})" if kw else "Pending"
     subsidy_info = f"₹{subsidy}" if subsidy else "Pending"
-    time_str = datetime.now().strftime("%d %b %Y, %I:%M %p")
+    
+    # IST Format Time String
+    time_str = datetime.now(IST).strftime("%d %b %Y, %I:%M %p")
 
     text = (
         f"{header_tag}\n"
@@ -378,7 +383,7 @@ async def get_faq_answer(question: str, kw: Optional[int] = None) -> str:
 
 
 # ------------------------------------------------------------------
-# LEAD SAVING — Upsert by Mobile
+# LEAD SAVING — Upsert by Mobile with IST
 # ------------------------------------------------------------------
 
 def upsert_lead(state: dict, complete: bool):
@@ -393,7 +398,7 @@ def upsert_lead(state: dict, complete: bool):
     priority = get_priority(state.get("bill"), complete)
 
     row = [
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S"),
         state.get("name") or "Not Provided",
         mobile,
         state.get("city") or "Not Provided",
