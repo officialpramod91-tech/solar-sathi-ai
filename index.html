@@ -2,89 +2,87 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
     <title>Solar Sathi - AI Consultant</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        body { background: #f8fafc; min-height: 100vh; }
-
-        /* Floating Toggle Launcher */
-        .chat-launcher {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #ff8c00, #e65100);
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 30px;
-            box-shadow: 0 10px 25px rgba(230, 81, 0, 0.4);
-            cursor: pointer;
-            transition: all 0.25s ease;
-            z-index: 1000;
+        * { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
         }
-        .chat-launcher:hover { transform: scale(1.08); }
-        .chat-launcher.hidden { display: none !important; }
+        html, body {
+            height: 100%;
+            height: 100dvh;
+            background: #f8fafc;
+            overflow: hidden;
+        }
 
-        /* Main Container */
+        /* Main Container - Fullscreen on mobile by default */
         .chat-container {
             position: fixed;
-            bottom: 24px;
-            right: 24px;
-            width: 420px;
-            max-width: calc(100vw - 32px);
-            height: 650px;
-            max-height: calc(100vh - 48px);
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            height: 100dvh;
             background: #ffffff;
-            border-radius: 24px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
             display: flex;
             flex-direction: column;
             overflow: hidden;
             z-index: 1001;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        .chat-container.hidden {
-            opacity: 0;
-            transform: translateY(30px) scale(0.92);
-            pointer-events: none;
-            display: none;
+        /* Desktop view: neat centered/card popup */
+        @media (min-width: 601px) {
+            body {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: #e2e8f0;
+            }
+            .chat-container {
+                position: relative;
+                width: 440px;
+                height: 700px;
+                max-height: 92dvh;
+                border-radius: 24px;
+                box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+            }
         }
 
         /* Header */
         .header {
             background: linear-gradient(135deg, #ff8c00, #e65100);
             color: white;
-            padding: 16px 20px;
+            padding: 14px 18px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            flex-shrink: 0;
         }
         .header-left { display: flex; align-items: center; gap: 12px; }
         .header-icon {
-            width: 42px;
-            height: 42px;
+            width: 40px;
+            height: 40px;
             background: rgba(255, 255, 255, 0.2);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 22px;
+            font-size: 20px;
         }
-        .header-info h1 { font-size: 1.05rem; font-weight: 700; }
+        .header-info h1 { font-size: 1.05rem; font-weight: 700; line-height: 1.2; }
         .header-info p { 
-            font-size: 0.76rem; 
+            font-size: 0.75rem; 
             opacity: 0.95; 
             display: flex; 
             align-items: center; 
             gap: 5px; 
-            margin-top: 2px;
+            margin-top: 3px;
         }
         .online-dot {
             width: 7px;
@@ -93,40 +91,26 @@
             border-radius: 50%;
             display: inline-block;
         }
-        .close-btn {
-            background: rgba(255, 255, 255, 0.15);
-            border: none;
-            color: white;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            font-size: 18px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.2s;
-        }
-        .close-btn:hover { background: rgba(255, 255, 255, 0.3); }
 
         /* Chat messages list */
         .messages-box {
             flex: 1;
-            padding: 18px;
+            padding: 16px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
             gap: 12px;
             background: #f8fafc;
             scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch;
         }
 
         .msg {
-            max-width: 82%;
+            max-width: 85%;
             padding: 12px 16px;
             border-radius: 18px;
-            font-size: 0.92rem;
-            line-height: 1.5;
+            font-size: 0.93rem;
+            line-height: 1.48;
             word-wrap: break-word;
             white-space: pre-wrap;
         }
@@ -135,7 +119,7 @@
             color: #0f172a;
             align-self: flex-start;
             border-bottom-left-radius: 4px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
             border: 1px solid #e2e8f0;
         }
         .user {
@@ -168,25 +152,25 @@
         }
         .chip-btn:hover {
             background: #fff4e6;
-            transform: translateY(-1px);
         }
 
         /* Input area */
         .input-area {
             display: flex;
-            padding: 12px 16px;
+            padding: 10px 14px;
             background: #ffffff;
             border-top: 1px solid #edf2f7;
-            gap: 10px;
+            gap: 8px;
             align-items: center;
+            flex-shrink: 0;
         }
         input {
             flex: 1;
-            padding: 12px 18px;
+            padding: 12px 16px;
             border: 1.5px solid #e2e8f0;
             border-radius: 25px;
             outline: none;
-            font-size: 0.92rem;
+            font-size: 0.95rem;
             transition: border-color 0.2s;
             background: #f8fafc;
         }
@@ -202,11 +186,10 @@
             border-radius: 25px;
             cursor: pointer;
             font-weight: 600;
-            font-size: 0.9rem;
-            transition: opacity 0.2s, transform 0.1s;
-            box-shadow: 0 3px 8px rgba(230, 81, 0, 0.3);
+            font-size: 0.92rem;
+            flex-shrink: 0;
+            box-shadow: 0 3px 8px rgba(230, 81, 0, 0.25);
         }
-        .send-btn:active { transform: scale(0.96); }
         .send-btn:disabled { background: #cbd5e1; box-shadow: none; cursor: not-allowed; }
 
         /* Typing indicator */
@@ -218,30 +201,11 @@
             0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
             40% { transform: scale(1); opacity: 1; }
         }
-
-        /* Fullscreen Mobile View */
-        @media (max-width: 600px) {
-            .chat-container {
-                right: 0 !important;
-                bottom: 0 !important;
-                width: 100vw !important;
-                height: 100% !important;
-                max-width: 100vw !important;
-                max-height: 100% !important;
-                border-radius: 0 !important;
-            }
-            .chat-launcher {
-                bottom: 20px;
-                right: 20px;
-            }
-        }
     </style>
 </head>
 <body>
 
-<div class="chat-launcher" id="launcherBtn" onclick="toggleChat()">☀️</div>
-
-<div class="chat-container hidden" id="chatContainer">
+<div class="chat-container" id="chatContainer">
     <div class="header">
         <div class="header-left">
             <div class="header-icon">☀️</div>
@@ -250,7 +214,6 @@
                 <p><span class="online-dot"></span> Online | Instant Subsidy & Quote</p>
             </div>
         </div>
-        <button class="close-btn" onclick="toggleChat()" title="Close">✕</button>
     </div>
 
     <div class="messages-box" id="chatBox">
@@ -259,7 +222,7 @@
 Aapka monthly electricity bill lagbhag kitna aata hai? (e.g. 3000)</div>
     </div>
 
-    <div class="input-area">
+    <div class="input-area" id="inputArea">
         <input type="text" id="userInput" placeholder="Apna jawab likhein..." onkeypress="handleKey(event)" autocomplete="off">
         <button class="send-btn" id="sendBtn" onclick="sendMessage()">Send</button>
     </div>
@@ -268,19 +231,30 @@ Aapka monthly electricity bill lagbhag kitna aata hai? (e.g. 3000)</div>
 <script>
     let conversationHistory = [];
 
-    function toggleChat() {
-        const c = document.getElementById("chatContainer");
-        const launcher = document.getElementById("launcherBtn");
-        
-        c.classList.toggle("hidden");
-        
-        // Chat khulne par launcher button hide hoga, band karne par dikhega
-        if (!c.classList.contains("hidden")) {
-            launcher.classList.add("hidden");
-            document.getElementById("userInput").focus();
-        } else {
-            launcher.classList.remove("hidden");
-        }
+    // Mobile Keyboard open hone par automatic scroll to bottom
+    const userInput = document.getElementById("userInput");
+    const chatBox = document.getElementById("chatBox");
+
+    function scrollToBottom() {
+        setTimeout(() => {
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }, 120);
+    }
+
+    userInput.addEventListener("focus", () => {
+        scrollToBottom();
+        // Mobile layout adjust hone ke liye chhota sa delay
+        setTimeout(() => {
+            userInput.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }, 300);
+    });
+
+    // Window resize (keyboard appear/disappear) par maintain scroll
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', () => {
+            chatBox.scrollTop = chatBox.scrollHeight;
+        });
     }
 
     async function sendMessage(presetText = null) {
@@ -324,6 +298,7 @@ Aapka monthly electricity bill lagbhag kitna aata hai? (e.g. 3000)</div>
             appendMessage("bot", "Network Error: Server connect nahi ho pa raha hai.");
         } finally {
             sendBtn.disabled = false;
+            scrollToBottom();
         }
     }
 
@@ -351,7 +326,6 @@ Aapka monthly electricity bill lagbhag kitna aata hai? (e.g. 3000)</div>
         }
 
         if (options.length > 0) {
-            const chatBox = document.getElementById("chatBox");
             const chipsDiv = document.createElement("div");
             chipsDiv.className = "chips-container active-chips";
             options.forEach(opt => {
@@ -362,7 +336,7 @@ Aapka monthly electricity bill lagbhag kitna aata hai? (e.g. 3000)</div>
                 chipsDiv.appendChild(btn);
             });
             chatBox.appendChild(chipsDiv);
-            chatBox.scrollTop = chatBox.scrollHeight;
+            scrollToBottom();
         }
     }
 
@@ -371,23 +345,21 @@ Aapka monthly electricity bill lagbhag kitna aata hai? (e.g. 3000)</div>
     }
 
     function appendMessage(sender, text) {
-        const chatBox = document.getElementById("chatBox");
         const msgDiv = document.createElement("div");
         msgDiv.className = `msg ${sender}`;
         msgDiv.innerText = text;
         chatBox.appendChild(msgDiv);
-        chatBox.scrollTop = chatBox.scrollHeight;
+        scrollToBottom();
     }
 
     function appendTypingIndicator() {
-        const chatBox = document.getElementById("chatBox");
-        const typingDiv = document.createElement("div");
         const uniqueId = "typing-" + Date.now();
+        const typingDiv = document.createElement("div");
         typingDiv.id = uniqueId;
         typingDiv.className = "msg bot typing-indicator";
         typingDiv.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
         chatBox.appendChild(typingDiv);
-        chatBox.scrollTop = chatBox.scrollHeight;
+        scrollToBottom();
         return uniqueId;
     }
 
