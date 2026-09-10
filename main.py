@@ -1,5 +1,5 @@
 """
-Solar Sathi AI — PRODUCTION FINAL VERSION (v3.6 — Accurate kW & Dynamic Generation Release)
+Solar Sathi AI — PRODUCTION FINAL VERSION (v3.7 — Residential vs Commercial Smart Routing)
 """
 
 import os
@@ -93,28 +93,41 @@ class ChatRequest(BaseModel):
 
 
 # ------------------------------------------------------------------
-# DETERMINISTIC HELPERS (ACCURATE KW & SUBSIDY)
+# DETERMINISTIC HELPERS
 # ------------------------------------------------------------------
 
-def estimate_kw_and_subsidy(bill: int):
-    # PM Surya Ghar: Central subsidy is capped at ₹78,000 for 3 kW and above
+def estimate_kw_and_subsidy(bill: int, property_type: Optional[str] = None):
+    # Bill ke hisaab se accurate kW sizing
     if bill < 1500:
-        return 1, 30000
+        kw = 1
+        sub = 30000
     elif bill <= 3000:
-        return 2, 60000
+        kw = 2
+        sub = 60000
     elif bill <= 4500:
-        return 3, 78000
+        kw = 3
+        sub = 78000
     elif bill <= 6500:
-        return 5, 78000
+        kw = 5
+        sub = 78000
     elif bill <= 9000:
-        return 7, 78000
+        kw = 7
+        sub = 78000
     else:
-        return 10, 78000
+        kw = 10
+        sub = 78000
+
+    # Commercial property par central subsidy lagu nahi hoti
+    if property_type and property_type.lower() == "commercial":
+        return kw, 0
+    return kw, sub
 
 
-def get_priority(bill: Optional[int], complete: bool) -> str:
+def get_priority(bill: Optional[int], prop: Optional[str], complete: bool) -> str:
     if not complete:
         return "INCOMPLETE — FOLLOW UP"
+    if prop and prop.lower() == "commercial":
+        return "HIGH PRIORITY (Commercial Client)"
     if bill is not None and bill >= 4500:
         return "HIGH PRIORITY"
     if bill is not None and bill >= 2000:
@@ -123,7 +136,7 @@ def get_priority(bill: Optional[int], complete: bool) -> str:
 
 
 # ------------------------------------------------------------------
-# TELEGRAM ALERT NOTIFIER (Background Task with IST Time)
+# TELEGRAM ALERT NOTIFIER
 # ------------------------------------------------------------------
 
 def send_telegram_alert(state: dict, complete: bool = True):
@@ -131,12 +144,15 @@ def send_telegram_alert(state: dict, complete: bool = True):
         print("[Telegram Alert Skipped]: Credentials missing in .env")
         return
 
+    prop = state.get("property_type")
+    is_comm = prop and prop.lower() == "commercial"
+    
     kw = None
     subsidy = None
     if state.get("bill") is not None:
-        kw, subsidy = estimate_kw_and_subsidy(state["bill"])
+        kw, subsidy = estimate_kw_and_subsidy(state["bill"], prop)
 
-    priority = get_priority(state.get("bill"), complete)
+    priority = get_priority(state.get("bill"), prop, complete)
 
     if complete:
         header_tag = "🚨 *NEW QUALIFIED SOLAR LEAD!* ☀️"
@@ -149,10 +165,14 @@ def send_telegram_alert(state: dict, complete: bool = True):
     mobile = state.get("mobile") or "Not Provided"
     city = state.get("city") or "Pending"
     bill_val = f"₹{state['bill']}" if state.get("bill") is not None else "N/A"
-    prop = state.get("property_type") or "N/A"
+    prop_val = "Commercial (Dukan/Office)" if is_comm else (prop or "N/A")
     sys_type = state.get("system_type") or "N/A"
     sys_info = f"{kw} kW ({sys_type})" if kw else "Pending"
-    subsidy_info = f"₹{subsidy}" if subsidy else "Pending"
+    
+    if is_comm:
+        subsidy_info = "N/A (Tax/Tariff Benefits)"
+    else:
+        subsidy_info = f"₹{subsidy}" if subsidy else "Pending"
     
     time_str = datetime.now(IST).strftime("%d %b %Y, %I:%M %p")
 
@@ -163,7 +183,7 @@ def send_telegram_alert(state: dict, complete: bool = True):
         f"📞 *Mobile:* `{mobile}`\n"
         f"📍 *City / PIN:* {city}\n"
         f"⚡ *Monthly Bill:* {bill_val}\n"
-        f"🏢 *Property:* {prop}\n"
+        f"🏢 *Property:* {prop_val}\n"
         f"🔋 *System:* {sys_info}\n"
         f"💰 *Est. Subsidy:* {subsidy_info}\n"
         f"🎯 *Status:* {status_label}\n"
@@ -206,13 +226,13 @@ INVALID_NAME = "Kripya sirf apna naam likhiye — jaise: Pramod Kumar."
 INVALID_MOBILE = "Ye number sahi nahi lag raha. Kripya apna 10-digit mobile number dobara likhein — jaise 9876543210."
 
 FAQ_ONGRID = (
-    "On-Grid system aapke ghar ko seedha bijli grid se jodta hai. Jo extra bijli "
-    "panels banate hain wo grid ko chali jaati hai (net metering) aur bill kam hota hai — "
+    "On-Grid system aapke premises ko seedha bijli grid se jodta hai. Jo extra bijli "
+    "panels banate hain wo grid ko chali jaati hai (net metering) aur bill lagbhag zero hota hai — "
     "lekin power cut ke time ismein normally backup nahi milta."
 )
 FAQ_HYBRID = (
     "Hybrid system mein On-Grid ka fayda milta hai aur battery backup bhi hota hai, isliye "
-    "power cut ke time bhi zaroori appliances chalte rehte hain. Battery ki wajah se "
+    "power cut ke time bhi zaroori appliances aur equipment chalte rehte hain. Battery ki wajah se "
     "iski cost On-Grid se thodi zyada hoti hai."
 )
 
@@ -258,7 +278,7 @@ def parse_bill(text: str) -> Optional[int]:
 
 def parse_property_type(text: str) -> Optional[str]:
     tl = text.lower()
-    if any(k in tl for k in ["dukan", "shop", "office", "commercial", "business", "showroom"]):
+    if any(k in tl for k in ["dukan", "shop", "office", "commercial", "business", "showroom", "factory"]):
         return "Commercial"
     if any(k in tl for k in ["ghar", "makan", "residential", "home", "apna ghar"]):
         return "Residential"
@@ -319,14 +339,12 @@ ASK_MESSAGES = {
 
 
 # ------------------------------------------------------------------
-# AI FAQ HANDLER (DYNAMIC DYNAMIC PROMPT KE SATH)
+# AI FAQ HANDLER
 # ------------------------------------------------------------------
 
 def build_faq_prompt(kw: Optional[int] = None) -> str:
     kw_val = kw if kw else 3
     kw_str = f"{kw_val} kW"
-    
-    # 1 kW lagbhag 4 se 5 units rozana generate karta hai
     units_min = kw_val * 4
     units_max = kw_val * 5
     
@@ -338,15 +356,15 @@ Is {kw_str} system se rozana lagbhag {units_min}-{units_max} units generate hong
 
 Roman Hinglish mein (Devanagari nahi), 2-3 short lines mein clear jawab do.
 
-System capacity ke hisaab se load guidelines:
-- 1 kW ({units_min}-{units_max} units/day): Lights, fans, TV aur basic home appliances.
-- 2 kW ({units_min}-{units_max} units/day): Refrigerator, washing machine, cooler, lights aur fans (bina AC).
+System capacity load guidelines:
+- 1 kW ({units_min}-{units_max} units/day): Lights, fans, TV aur basic appliances.
+- 2 kW ({units_min}-{units_max} units/day): Fridge, washing machine, cooler, lights aur fans (bina AC).
 - 3 kW ({units_min}-{units_max} units/day): 1 AC (1.5 ton), fridge, TV, lights aur fans.
-- 5 kW ({units_min}-{units_max} units/day): 2 ACs (1.5 ton each), fridge, washing machine, water pump aur poore ghar ka load.
-- 7 kW to 10 kW ({units_min}-{units_max} units/day): 3 se 4 ACs, heavy motor pump, ya dukan/commercial equipment.
+- 5 kW ({units_min}-{units_max} units/day): 2 ACs (1.5 ton each), fridge, washing machine, water pump aur poora load.
+- 7 kW to 10 kW ({units_min}-{units_max} units/day): 3-4 ACs, heavy commercial machinery ya large office.
 
 STRICT INSTRUCTIONS:
-1. Agar sawal units generation ya appliance load ka hai, toh sirf aur sirf {kw_str} ({units_min}-{units_max} units/day) ka hi figure batao! Kisi aur system size ka zikr mat karo.
+1. Agar sawal units generation ya appliance load ka hai, toh sirf {kw_str} ({units_min}-{units_max} units/day) ka hi figure batao!
 2. Direct, polite aur accurate raho.
 """
 
@@ -410,8 +428,8 @@ def upsert_lead(state: dict, complete: bool):
     ensure_csv()
     kw, subsidy = (None, None)
     if state.get("bill") is not None:
-        kw, subsidy = estimate_kw_and_subsidy(state["bill"])
-    priority = get_priority(state.get("bill"), complete)
+        kw, subsidy = estimate_kw_and_subsidy(state["bill"], state.get("property_type"))
+    priority = get_priority(state.get("bill"), state.get("property_type"), complete)
 
     row = [
         datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S"),
@@ -450,15 +468,25 @@ def upsert_lead(state: dict, complete: bool):
 
 
 def build_confirmation(state: dict) -> str:
-    kw, subsidy = estimate_kw_and_subsidy(state["bill"])
+    is_comm = (state.get("property_type") or "").lower() == "commercial"
+    kw, subsidy = estimate_kw_and_subsidy(state["bill"], state.get("property_type"))
+    
+    if is_comm:
+        prop_str = "Commercial (Dukan/Office)"
+        benefit_line = "📈 Benefit: Commercial Tax Benefits (40% Depreciation) + Bill Savings (No Subsidy)"
+        team_detail = "commercial tax benefits aur ROI ki poori detail degi"
+    else:
+        prop_str = "Residential (Ghar)"
+        benefit_line = f"💰 Estimated Subsidy: PM Surya Ghar Yojana ke tahat lagbhag ₹{subsidy} tak (final subsidy survey ke baad confirm hogi)"
+        team_detail = "free site survey schedule karegi"
+
     return (
         f"Dhanyawad {state['name']} ji! 🙏 Aapki details note ho gayi hain:\n\n"
         f"☀️ System: lagbhag {kw} kW ({state['system_type']})\n"
-        f"🏠 Property: {state['property_type']}\n"
+        f"🏢 Property: {prop_str}\n"
         f"📍 Location: {state['city']}\n"
-        f"💰 Estimated Subsidy: PM Surya Ghar Yojana ke tahat lagbhag ₹{subsidy} tak "
-        f"(final subsidy site survey ke baad confirm hogi)\n\n"
-        f"Humari team aapse {state['mobile']} par contact karke free site survey schedule karegi. "
+        f"{benefit_line}\n\n"
+        f"Humari team aapse {state['mobile']} par contact karke {team_detail}. "
         f"Aapka din shubh ho! ☀️\n\n"
         f"Agar chahein to abhi bhi pooch sakte hain:\n"
         f"1️⃣ EMI, loan ya documents ke baare mein\n"
@@ -468,12 +496,27 @@ def build_confirmation(state: dict) -> str:
 
 
 def build_bill_response(bill: int) -> str:
-    kw, subsidy = estimate_kw_and_subsidy(bill)
+    kw, _ = estimate_kw_and_subsidy(bill)
     return (
-        f"Aapke ₹{bill} ke monthly bill ke hisaab se lagbhag {kw} kW ka solar system suitable rahega, "
-        f"jisme PM Surya Ghar Yojana ke tahat ₹{subsidy} tak ki subsidy mil sakti hai "
-        f"(final size site survey ke baad confirm hoti hai).\n\n{ASK_PROPERTY}"
+        f"Aapke ₹{bill} ke monthly bill ke hisaab se lagbhag {kw} kW ka solar system suitable rahega. "
+        f"(Final size site survey ke baad confirm hoti hai).\n\n{ASK_PROPERTY}"
     )
+
+
+def build_system_type_response(state: dict) -> str:
+    is_comm = (state.get("property_type") or "").lower() == "commercial"
+    kw, subsidy = estimate_kw_and_subsidy(state["bill"])
+    
+    if is_comm:
+        prefix = (
+            "Commercial properties (Dukan/Office/Factory) par PM Surya Ghar yojana ki subsidy lagu nahi hoti, "
+            "lekin aapko 40% tak ka Income Tax Depreciation Benefit milega aur aapka commercial electricity bill bachat maximum hogi! 💰\n\n"
+        )
+    else:
+        prefix = (
+            f"Residential (Ghar) ke liye aapko PM Surya Ghar Yojana ke tahat maximum ₹{subsidy} tak ki government subsidy mil sakti hai. 🎉\n\n"
+        )
+    return prefix + ASK_SYSTEM_TYPE
 
 
 # ------------------------------------------------------------------
@@ -532,7 +575,7 @@ async def process_message(history: List[HistoryMessage], message: str, bg_tasks:
     current_kw = None
     bill_found = state.get("bill") or extract_bill_from_history(customer_messages)
     if bill_found is not None:
-        current_kw, _ = estimate_kw_and_subsidy(bill_found)
+        current_kw, _ = estimate_kw_and_subsidy(bill_found, state.get("property_type"))
 
     if outcome is not None and outcome[0] == "filled":
         field_filled = outcome[1]
@@ -549,6 +592,10 @@ async def process_message(history: List[HistoryMessage], message: str, bg_tasks:
 
         if field_filled == "bill":
             return build_bill_response(state["bill"]), None
+
+        if field_filled == "property_type":
+            return build_system_type_response(state), None
+
         return ASK_MESSAGES[pending_field], None
 
     if outcome is not None and outcome[0] == "invalid":
@@ -576,7 +623,7 @@ async def process_message(history: List[HistoryMessage], message: str, bg_tasks:
             answer = await get_faq_answer(question, kw=current_kw)
         return f"{answer}\n\n{ASK_MESSAGES[field]}", None
 
-    # Post-completion handling (Jab saari details submit ho chuki hon)
+    # Post-completion handling
     if pending_field is None:
         if is_sensitive_topic(message):
             return (
