@@ -1,5 +1,5 @@
 """
-Solar Sathi AI — PRODUCTION FINAL VERSION (v3.5 — Indian Standard Time IST Release)
+Solar Sathi AI — PRODUCTION FINAL VERSION (v3.6 — Accurate kW & Dynamic Generation Release)
 """
 
 import os
@@ -19,7 +19,6 @@ from groq import Groq
 # SETUP & CONFIGURATION (INDIAN TIMEZONE SET)
 # ------------------------------------------------------------------
 
-# Indian Standard Time (IST = UTC + 5:30)
 IST = timezone(timedelta(hours=5, minutes=30))
 
 load_dotenv()
@@ -94,21 +93,29 @@ class ChatRequest(BaseModel):
 
 
 # ------------------------------------------------------------------
-# DETERMINISTIC HELPERS
+# DETERMINISTIC HELPERS (ACCURATE KW & SUBSIDY)
 # ------------------------------------------------------------------
 
 def estimate_kw_and_subsidy(bill: int):
+    # PM Surya Ghar: Central subsidy is capped at ₹78,000 for 3 kW and above
     if bill < 1500:
         return 1, 30000
     elif bill <= 3000:
         return 2, 60000
-    return 3, 78000
+    elif bill <= 4500:
+        return 3, 78000
+    elif bill <= 6500:
+        return 5, 78000
+    elif bill <= 9000:
+        return 7, 78000
+    else:
+        return 10, 78000
 
 
 def get_priority(bill: Optional[int], complete: bool) -> str:
     if not complete:
         return "INCOMPLETE — FOLLOW UP"
-    if bill is not None and bill >= 4000:
+    if bill is not None and bill >= 4500:
         return "HIGH PRIORITY"
     if bill is not None and bill >= 2000:
         return "MEDIUM PRIORITY"
@@ -147,7 +154,6 @@ def send_telegram_alert(state: dict, complete: bool = True):
     sys_info = f"{kw} kW ({sys_type})" if kw else "Pending"
     subsidy_info = f"₹{subsidy}" if subsidy else "Pending"
     
-    # IST Format Time String
     time_str = datetime.now(IST).strftime("%d %b %Y, %I:%M %p")
 
     text = (
@@ -231,7 +237,7 @@ def is_question(text: str) -> bool:
     question_words = [
         "kya", "kaise", "kitna", "kitne", "kaunsa", "konsa", "kab", "kahan",
         "kyun", "kyu", "matlab", "samjha", "samajh", "explain", "difference",
-        "farak", "batao", "bataye", "subsidy", "chalega", "chalenge",
+        "farak", "batao", "bataye", "subsidy", "chalega", "chalenge", "unit", "units",
     ]
     return any(re.search(rf"\b{re.escape(w)}\b", tl) for w in question_words)
 
@@ -317,21 +323,31 @@ ASK_MESSAGES = {
 # ------------------------------------------------------------------
 
 def build_faq_prompt(kw: Optional[int] = None) -> str:
-    kw_str = f"{kw} kW" if kw else "user ke recommended"
+    kw_val = kw if kw else 3
+    kw_str = f"{kw_val} kW"
+    
+    # 1 kW lagbhag 4 se 5 units rozana generate karta hai
+    units_min = kw_val * 4
+    units_max = kw_val * 5
+    
     return f"""
-Tum 'Solar Sathi' ho, ek friendly solar consultant.
+Tum 'Solar Sathi' ho, ek friendly expert solar consultant.
 Customer ne ek general sawal poocha hai.
-Customer ka recommended system size hai: {kw_str}.
-Roman Hinglish mein (Devanagari nahi), 2-3 short lines mein seedha jawab do.
+Customer ka recommended system size STRICTLY hai: {kw_str}.
+Is {kw_str} system se rozana lagbhag {units_min}-{units_max} units generate honge.
 
-Generation aur load ke rules:
-- 1 kW: lagbhag 4-5 units/day generate karta hai. Isse lights, fans, TV aur chhota fridge chal sakta hai.
-- 2 kW: lagbhag 8-10 units/day generate karta hai. Isse fridge, washing machine, cooler, fans aur lights aaram se chalte hain (AC ke bina).
-- 3 kW: lagbhag 12-15 units/day generate karta hai. Isse 1 AC (1.5 ton), fridge, TV, fans aur lights aaram se chalte hain.
-- Hybrid battery: 1-2 kW ke liye normally 1 battery (150Ah) aur 3 kW+ ke liye 1 ya 2 battery (150Ah) backup ke liye lagti hain.
+Roman Hinglish mein (Devanagari nahi), 2-3 short lines mein clear jawab do.
 
-Agar sawal generation ya appliances ka ho, toh STRICTLY {kw_str} system ke according hi figures batao! Dusra size mat bolo.
-Koi unrealistic guarantee mat do.
+System capacity ke hisaab se load guidelines:
+- 1 kW ({units_min}-{units_max} units/day): Lights, fans, TV aur basic home appliances.
+- 2 kW ({units_min}-{units_max} units/day): Refrigerator, washing machine, cooler, lights aur fans (bina AC).
+- 3 kW ({units_min}-{units_max} units/day): 1 AC (1.5 ton), fridge, TV, lights aur fans.
+- 5 kW ({units_min}-{units_max} units/day): 2 ACs (1.5 ton each), fridge, washing machine, water pump aur poore ghar ka load.
+- 7 kW to 10 kW ({units_min}-{units_max} units/day): 3 se 4 ACs, heavy motor pump, ya dukan/commercial equipment.
+
+STRICT INSTRUCTIONS:
+1. Agar sawal units generation ya appliance load ka hai, toh sirf aur sirf {kw_str} ({units_min}-{units_max} units/day) ka hi figure batao! Kisi aur system size ka zikr mat karo.
+2. Direct, polite aur accurate raho.
 """
 
 
@@ -344,8 +360,8 @@ def _call_faq_ai(question: str, kw: Optional[int] = None) -> str:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": question},
         ],
-        temperature=0.3,
-        max_tokens=250,
+        temperature=0.2,
+        max_tokens=220,
     )
     if FAQ_MODEL.startswith("qwen/"):
         kwargs["reasoning_effort"] = "none"
@@ -464,6 +480,14 @@ def build_bill_response(bill: int) -> str:
 # CONVERSATION STATE MACHINE
 # ------------------------------------------------------------------
 
+def extract_bill_from_history(customer_messages: List[str]) -> Optional[int]:
+    for msg in customer_messages:
+        b = parse_bill(msg)
+        if b is not None:
+            return b
+    return None
+
+
 def build_state(customer_messages: List[str]):
     state = {f: None for f in FIELD_ORDER}
 
@@ -506,8 +530,9 @@ async def process_message(history: List[HistoryMessage], message: str, bg_tasks:
     state, outcome, pending_field = build_state(customer_messages)
 
     current_kw = None
-    if state.get("bill") is not None:
-        current_kw, _ = estimate_kw_and_subsidy(state["bill"])
+    bill_found = state.get("bill") or extract_bill_from_history(customer_messages)
+    if bill_found is not None:
+        current_kw, _ = estimate_kw_and_subsidy(bill_found)
 
     if outcome is not None and outcome[0] == "filled":
         field_filled = outcome[1]
@@ -551,7 +576,7 @@ async def process_message(history: List[HistoryMessage], message: str, bg_tasks:
             answer = await get_faq_answer(question, kw=current_kw)
         return f"{answer}\n\n{ASK_MESSAGES[field]}", None
 
-    # Post-completion handling (Jab sab details bhar chuki hon)
+    # Post-completion handling (Jab saari details submit ho chuki hon)
     if pending_field is None:
         if is_sensitive_topic(message):
             return (
