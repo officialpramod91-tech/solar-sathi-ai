@@ -1,5 +1,5 @@
 """
-Solar Sathi AI — PRODUCTION FINAL VERSION (v3.7 — Residential vs Commercial Smart Routing)
+Solar Sathi AI — PRODUCTION FINAL VERSION (v3.9 — Complete Unified Release)
 """
 
 import os
@@ -146,7 +146,7 @@ def send_telegram_alert(state: dict, complete: bool = True):
 
     prop = state.get("property_type")
     is_comm = prop and prop.lower() == "commercial"
-    
+
     kw = None
     subsidy = None
     if state.get("bill") is not None:
@@ -168,12 +168,12 @@ def send_telegram_alert(state: dict, complete: bool = True):
     prop_val = "Commercial (Dukan/Office)" if is_comm else (prop or "N/A")
     sys_type = state.get("system_type") or "N/A"
     sys_info = f"{kw} kW ({sys_type})" if kw else "Pending"
-    
+
     if is_comm:
         subsidy_info = "N/A (Tax/Tariff Benefits)"
     else:
         subsidy_info = f"₹{subsidy}" if subsidy else "Pending"
-    
+
     time_str = datetime.now(IST).strftime("%d %b %Y, %I:%M %p")
 
     text = (
@@ -339,39 +339,45 @@ ASK_MESSAGES = {
 
 
 # ------------------------------------------------------------------
-# AI FAQ HANDLER
+# AI FAQ HANDLER (COMMERCIAL / RESIDENTIAL AWARE)
 # ------------------------------------------------------------------
 
-def build_faq_prompt(kw: Optional[int] = None) -> str:
+def build_faq_prompt(kw: Optional[int] = None, property_type: Optional[str] = None) -> str:
     kw_val = kw if kw else 3
     kw_str = f"{kw_val} kW"
     units_min = kw_val * 4
     units_max = kw_val * 5
-    
+
+    is_comm = property_type and property_type.lower() == "commercial"
+    context_type = "Commercial (Dukan/Office/Factory)" if is_comm else "Residential (Ghar)"
+
     return f"""
 Tum 'Solar Sathi' ho, ek friendly expert solar consultant.
 Customer ne ek general sawal poocha hai.
 Customer ka recommended system size STRICTLY hai: {kw_str}.
+Property context: {context_type}.
 Is {kw_str} system se rozana lagbhag {units_min}-{units_max} units generate honge.
 
 Roman Hinglish mein (Devanagari nahi), 2-3 short lines mein clear jawab do.
 
 System capacity load guidelines:
 - 1 kW ({units_min}-{units_max} units/day): Lights, fans, TV aur basic appliances.
-- 2 kW ({units_min}-{units_max} units/day): Fridge, washing machine, cooler, lights aur fans (bina AC).
-- 3 kW ({units_min}-{units_max} units/day): 1 AC (1.5 ton), fridge, TV, lights aur fans.
-- 5 kW ({units_min}-{units_max} units/day): 2 ACs (1.5 ton each), fridge, washing machine, water pump aur poora load.
-- 7 kW to 10 kW ({units_min}-{units_max} units/day): 3-4 ACs, heavy commercial machinery ya large office.
+- 2 kW ({units_min}-{units_max} units/day): Refrigerator/counter, cooler, lights aur fans (bina AC).
+- 3 kW ({units_min}-{units_max} units/day): 1 AC (1.5 ton), fridge, lights aur standard load.
+- 5 kW ({units_min}-{units_max} units/day): 2 ACs (1.5 ton each), computers/equipment aur poora premises load.
+- 7 kW to 10 kW ({units_min}-{units_max} units/day): 3-4 ACs, heavy machines/equipment ya bada showroom/office.
 
 STRICT INSTRUCTIONS:
-1. Agar sawal units generation ya appliance load ka hai, toh sirf {kw_str} ({units_min}-{units_max} units/day) ka hi figure batao!
-2. Direct, polite aur accurate raho.
+1. Agar Property context 'Commercial (Dukan/Office/Factory)' hai, toh load describe karte waqt 'ghar' shabd ka istemal BILKUL MAT KARO! Uski jagah 'aapki dukan/office ka load' ya 'commercial equipment' bolo.
+2. Agar Property context 'Residential (Ghar)' hai, toh normal home load bolo.
+3. Agar sawal units generation ya appliance load ka hai, toh sirf {kw_str} ({units_min}-{units_max} units/day) ka hi figure batao!
+4. Direct, polite aur professional raho.
 """
 
 
-def _call_faq_ai(question: str, kw: Optional[int] = None) -> str:
+def _call_faq_ai(question: str, kw: Optional[int] = None, property_type: Optional[str] = None) -> str:
     global FAQ_MODEL
-    system_prompt = build_faq_prompt(kw)
+    system_prompt = build_faq_prompt(kw, property_type)
     kwargs = dict(
         model=FAQ_MODEL,
         messages=[
@@ -407,9 +413,9 @@ def clean_output(text: str) -> str:
     return re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL).strip()
 
 
-async def get_faq_answer(question: str, kw: Optional[int] = None) -> str:
+async def get_faq_answer(question: str, kw: Optional[int] = None, property_type: Optional[str] = None) -> str:
     try:
-        raw = await asyncio.to_thread(_call_faq_ai, question, kw)
+        raw = await asyncio.to_thread(_call_faq_ai, question, kw, property_type)
         return clean_output(raw) or "Hamari technical team aapse call par detail se discuss karegi."
     except Exception as e:
         print(f"[FAQ AI Error]: {e}")
@@ -470,7 +476,7 @@ def upsert_lead(state: dict, complete: bool):
 def build_confirmation(state: dict) -> str:
     is_comm = (state.get("property_type") or "").lower() == "commercial"
     kw, subsidy = estimate_kw_and_subsidy(state["bill"], state.get("property_type"))
-    
+
     if is_comm:
         prop_str = "Commercial (Dukan/Office)"
         benefit_line = "📈 Benefit: Commercial Tax Benefits (40% Depreciation) + Bill Savings (No Subsidy)"
@@ -506,7 +512,7 @@ def build_bill_response(bill: int) -> str:
 def build_system_type_response(state: dict) -> str:
     is_comm = (state.get("property_type") or "").lower() == "commercial"
     kw, subsidy = estimate_kw_and_subsidy(state["bill"])
-    
+
     if is_comm:
         prefix = (
             "Commercial properties (Dukan/Office/Factory) par PM Surya Ghar yojana ki subsidy lagu nahi hoti, "
@@ -528,6 +534,14 @@ def extract_bill_from_history(customer_messages: List[str]) -> Optional[int]:
         b = parse_bill(msg)
         if b is not None:
             return b
+    return None
+
+
+def extract_property_type_from_history(customer_messages: List[str]) -> Optional[str]:
+    for msg in customer_messages:
+        p = parse_property_type(msg)
+        if p is not None:
+            return p
     return None
 
 
@@ -574,8 +588,10 @@ async def process_message(history: List[HistoryMessage], message: str, bg_tasks:
 
     current_kw = None
     bill_found = state.get("bill") or extract_bill_from_history(customer_messages)
+    prop_found = state.get("property_type") or extract_property_type_from_history(customer_messages)
+
     if bill_found is not None:
-        current_kw, _ = estimate_kw_and_subsidy(bill_found, state.get("property_type"))
+        current_kw, _ = estimate_kw_and_subsidy(bill_found, prop_found)
 
     if outcome is not None and outcome[0] == "filled":
         field_filled = outcome[1]
@@ -620,7 +636,7 @@ async def process_message(history: List[HistoryMessage], message: str, bg_tasks:
             else:
                 answer = f"{FAQ_ONGRID}\n\n{FAQ_HYBRID}"
         else:
-            answer = await get_faq_answer(question, kw=current_kw)
+            answer = await get_faq_answer(question, kw=current_kw, property_type=prop_found)
         return f"{answer}\n\n{ASK_MESSAGES[field]}", None
 
     # Post-completion handling
@@ -645,7 +661,7 @@ async def process_message(history: List[HistoryMessage], message: str, bg_tasks:
             return f"{answer}\n\nHumara installer site visit ke time iski poori detail dega. 🙏", None
 
         if is_question(message):
-            answer = await get_faq_answer(message, kw=current_kw)
+            answer = await get_faq_answer(message, kw=current_kw, property_type=prop_found)
             return f"{answer}\n\nHumara installer site visit ke time iski poori detail dega. 🙏", None
 
         return "Aapki details already register ho chuki hain. Hamari team jald hi aapse contact karegi. 🙏", None
