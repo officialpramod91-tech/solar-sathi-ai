@@ -154,6 +154,7 @@
             border-radius: 16px;
             width: fit-content;
             max-width: 100%;
+            text-align: left;
         }
 
         .bot .bubble {
@@ -315,8 +316,8 @@ Please select your language / अपनी भाषा चुनें:
         </div>
 
         <div class="chips-list active-chips">
-            <div class="chip-card highlight" onclick="sendMessage('2')">🇮🇳 Hinglish (हिंदी)</div>
-            <div class="chip-card blue-outline" onclick="sendMessage('1')">🌐 English</div>
+            <div class="chip-card highlight" onclick="sendMessage('2', '🇮🇳 Hinglish (हिंदी)')">🇮🇳 Hinglish (हिंदी)</div>
+            <div class="chip-card blue-outline" onclick="sendMessage('1', '🌐 English')">🌐 English</div>
         </div>
     </div>
 
@@ -343,7 +344,6 @@ Please select your language / अपनी भाषा चुनें:
         }, 120);
     }
 
-    // Mobile Keyboard Focus / Resize Handlers
     const userInput = document.getElementById("userInput");
     userInput.addEventListener("focus", () => {
         scrollToBottom();
@@ -363,20 +363,25 @@ Please select your language / अपनी भाषा चुनें:
         const first = conversationHistory.find(m => m.sender === "user");
         if (!first) return false;
         const txt = first.text.toLowerCase().trim();
-        return txt === "1" || txt === "english" || txt === "en";
+        return txt === "1" || txt === "english" || txt === "en" || txt.includes("english");
     }
 
     let isSending = false;
 
-    async function sendMessage(presetText = null) {
+    // displayLabel: user bubble mein kya dikhega
+    // presetText: backend ko kya jayega
+    async function sendMessage(presetText = null, displayLabel = null) {
         if (isSending) return;
         const input = document.getElementById("userInput");
         const sendBtn = document.getElementById("sendBtn");
-        const message = presetText ? presetText.trim() : input.value.trim();
-        if (!message) return;
+        
+        const backendPayload = presetText ? presetText.trim() : input.value.trim();
+        const bubbleDisplay = displayLabel ? displayLabel.trim() : backendPayload;
+
+        if (!backendPayload) return;
 
         isSending = true;
-        appendUserMessage(message);
+        appendUserMessage(bubbleDisplay);
         if (!presetText) input.value = "";
         sendBtn.disabled = true;
 
@@ -387,7 +392,7 @@ Please select your language / अपनी भाषा चुनें:
             const res = await fetch(BACKEND_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: message, history: conversationHistory })
+                body: JSON.stringify({ message: backendPayload, history: conversationHistory })
             });
 
             const data = await res.json();
@@ -396,7 +401,7 @@ Please select your language / अपनी भाषा चुनें:
             const botReply = data.reply || "Maaf kijiye, koi technical samasya aayi.";
             appendBotMessage(botReply);
 
-            conversationHistory.push({ sender: "user", text: message });
+            conversationHistory.push({ sender: "user", text: backendPayload });
             conversationHistory.push({ sender: "bot", text: botReply });
 
             renderContextualChips(botReply);
@@ -415,12 +420,21 @@ Please select your language / अपनी भाषा चुनें:
         div.className = "msg-row user";
         div.innerHTML = `
             <div class="bubble">
-                ${escapeHtml(text)}
+                ${escapeHtml(text.trim())}
                 <div class="bubble-time">${getTimeString()} <i class="fa-solid fa-check-double" style="font-size:9px; color:#93c5fd;"></i></div>
             </div>
         `;
         chat.appendChild(div);
         scrollToBottom();
+    }
+
+    // Har line ka leading/trailing space trim karke left alignment fix ki gayi
+    function cleanIndent(rawStr) {
+        return rawStr
+            .split('\n')
+            .map(line => line.trim())
+            .join('\n')
+            .trim();
     }
 
     function appendBotMessage(text) {
@@ -430,7 +444,7 @@ Please select your language / अपनी भाषा चुनें:
         div.innerHTML = `
             <div class="bubble-avatar"><img src="logo.png" alt="bot" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/8618/8618881.png';"></div>
             <div class="bubble">
-                ${escapeHtml(text)}
+                ${escapeHtml(cleanIndent(text))}
                 <div class="bubble-time">${getTimeString()}</div>
             </div>
         `;
@@ -470,7 +484,7 @@ Please select your language / अपनी भाषा चुनें:
                 const btn = document.createElement("div");
                 btn.className = `chip-card ${c.style}`;
                 btn.innerText = c.label;
-                btn.onclick = () => sendMessage(c.val);
+                btn.onclick = () => sendMessage(c.val, c.label);
                 wrap.appendChild(btn);
             });
             chat.appendChild(wrap);
