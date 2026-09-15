@@ -2,341 +2,497 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
-    <title>Solar Sathi - AI Consultant</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar Sathi - AI Solar Consultant</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * { 
-            box-sizing: border-box; 
-            margin: 0; 
-            padding: 0; 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-        }
-        html, body {
-            height: 100%;
-            height: 100dvh;
-            background: #f8fafc;
-            overflow: hidden;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background: #f0f2f5; min-height: 100vh; }
 
-        /* Main Container - Fullscreen on mobile by default */
-        .chat-container {
+        .chat-launcher {
             position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            width: 100%;
-            height: 100%;
-            height: 100dvh;
-            background: #ffffff;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            z-index: 1001;
-        }
-
-        /* Desktop view: neat centered/card popup */
-        @media (min-width: 601px) {
-            body {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                background: #e2e8f0;
-            }
-            .chat-container {
-                position: relative;
-                width: 440px;
-                height: 700px;
-                max-height: 92dvh;
-                border-radius: 24px;
-                box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
-            }
-        }
-
-        /* Header */
-        .header {
-            background: linear-gradient(135deg, #ff8c00, #e65100);
-            color: white;
-            padding: 14px 18px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
-            flex-shrink: 0;
-        }
-        .header-left { display: flex; align-items: center; gap: 12px; }
-        .header-icon {
-            width: 40px;
-            height: 40px;
-            background: rgba(255, 255, 255, 0.2);
+            bottom: 24px;
+            right: 24px;
+            width: 60px;
+            height: 60px;
             border-radius: 50%;
+            background: linear-gradient(135deg, #0b4f9c, #063168);
+            color: #ffcc00;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 20px;
+            font-size: 26px;
+            box-shadow: 0 10px 25px rgba(11, 79, 156, 0.35);
+            cursor: pointer;
+            z-index: 1000;
+            transition: transform 0.2s;
         }
-        .header-info h1 { font-size: 1.05rem; font-weight: 700; line-height: 1.2; }
-        .header-info p { 
-            font-size: 0.75rem; 
-            opacity: 0.95; 
-            display: flex; 
-            align-items: center; 
-            gap: 5px; 
-            margin-top: 3px;
-        }
-        .online-dot {
-            width: 7px;
-            height: 7px;
-            background-color: #4ade80;
-            border-radius: 50%;
-            display: inline-block;
-        }
+        .chat-launcher:hover { transform: scale(1.06); }
 
-        /* Chat messages list */
-        .messages-box {
-            flex: 1;
-            padding: 16px;
-            overflow-y: auto;
+        .app-container {
+            position: fixed;
+            bottom: 92px;
+            right: 24px;
+            width: 410px;
+            max-width: calc(100vw - 32px);
+            height: 650px;
+            max-height: calc(100vh - 110px);
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 18px 50px rgba(0, 30, 70, 0.2);
             display: flex;
             flex-direction: column;
-            gap: 12px;
-            background: #f8fafc;
-            scroll-behavior: smooth;
-            -webkit-overflow-scrolling: touch;
+            overflow: hidden;
+            z-index: 999;
         }
 
-        .msg {
-            max-width: 85%;
-            padding: 12px 16px;
-            border-radius: 18px;
-            font-size: 0.93rem;
-            line-height: 1.48;
-            word-wrap: break-word;
-            white-space: pre-wrap;
-        }
-        .bot {
-            background: #ffffff;
-            color: #0f172a;
-            align-self: flex-start;
-            border-bottom-left-radius: 4px;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
-            border: 1px solid #e2e8f0;
-        }
-        .user {
-            background: linear-gradient(135deg, #ff8c00, #e65100);
-            color: #ffffff;
-            align-self: flex-end;
-            border-bottom-right-radius: 4px;
-            box-shadow: 0 3px 10px rgba(230, 81, 0, 0.25);
-        }
+        .app-container.hidden { display: none; }
 
-        /* Chips */
-        .chips-container {
+        /* Top Header - Exact Second Image Look */
+        .app-header {
+            background: #0b4f9c;
+            color: white;
+            padding: 14px 16px 18px 16px;
             display: flex;
-            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+        }
+        .app-header::after {
+            content: "";
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 110px;
+            height: 8px;
+            background: #ffcc00;
+            border-top-left-radius: 8px;
+        }
+        .header-left { display: flex; align-items: center; gap: 10px; }
+        
+        .avatar-box {
+            position: relative;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            background: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #ffcc00;
+            flex-shrink: 0;
+        }
+        .avatar-box img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .online-dot {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #10b981;
+            border: 2px solid white;
+        }
+
+        .header-meta h2 { font-size: 1.02rem; font-weight: 700; line-height: 1.2; }
+        .header-meta .status-sub { font-size: 0.72rem; color: #dbeafe; display: flex; align-items: center; gap: 4px; }
+        .header-meta .tagline { font-size: 0.65rem; color: #93c5fd; }
+
+        .header-right { display: flex; align-items: center; gap: 12px; }
+        .solar-badge { font-size: 1.4rem; color: #ffcc00; }
+        .close-btn {
+            background: none;
+            border: none;
+            color: #ffffff;
+            font-size: 22px;
+            cursor: pointer;
+            opacity: 0.85;
+            line-height: 1;
+        }
+
+        /* Chat Body */
+        .chat-body {
+            flex: 1;
+            background: #f8fafc;
+            overflow-y: auto;
+            padding: 16px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        /* Message Layouts */
+        .msg-row {
+            display: flex;
             gap: 8px;
-            margin-top: 4px;
+            max-width: 88%;
+        }
+        .msg-row.bot {
             align-self: flex-start;
         }
-        .chip-btn {
+        .msg-row.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .bubble-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 1.5px solid #ffcc00;
             background: #ffffff;
-            color: #d9480f;
-            border: 1.5px solid #ffa94d;
-            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+        .bubble-avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Clean Compact Rounded Bubbles */
+        .bubble {
+            padding: 10px 14px;
+            font-size: 0.88rem;
+            line-height: 1.45;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .bot .bubble {
+            background: #edf5fd;
+            color: #0f172a;
+            border-radius: 18px;
+            border-top-left-radius: 4px;
+            border: 1px solid #e0ecf8;
+        }
+
+        .user .bubble {
+            background: #0b4f9c;
+            color: #ffffff;
+            border-radius: 18px;
+            border-top-right-radius: 4px;
+            box-shadow: 0 3px 8px rgba(11, 79, 156, 0.16);
+            display: inline-block;
+            width: auto;
+        }
+
+        .bubble-time {
+            font-size: 0.65rem;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 4px;
+            opacity: 0.75;
+        }
+        .user .bubble-time { color: #dbeafe; }
+        .bot .bubble-time { color: #64748b; }
+
+        /* Chips List */
+        .chips-list {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 2px;
+            padding-left: 40px;
+        }
+        .chip-card {
+            background: #ffffff;
+            border: 1.5px solid #e2e8f0;
             padding: 8px 14px;
-            font-size: 0.82rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
             font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
             cursor: pointer;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.03);
             transition: all 0.15s ease;
         }
-        .chip-btn:hover {
-            background: #fff4e6;
+        .chip-card.highlight {
+            background: #fffbeb;
+            border-color: #fde047;
+            color: #854d0e;
+        }
+        .chip-card.blue-outline {
+            border-color: #93c5fd;
+            color: #0b4f9c;
+        }
+        .chip-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.06);
         }
 
-        /* Input area */
-        .input-area {
-            display: flex;
+        /* Footer Input Bar */
+        .footer-action-bar {
             padding: 10px 14px;
             background: #ffffff;
-            border-top: 1px solid #edf2f7;
-            gap: 8px;
+            border-top: 1px solid #f1f5f9;
+            display: flex;
             align-items: center;
-            flex-shrink: 0;
+            gap: 10px;
         }
-        input {
-            flex: 1;
-            padding: 12px 16px;
-            border: 1.5px solid #e2e8f0;
-            border-radius: 25px;
-            outline: none;
-            font-size: 0.95rem;
-            transition: border-color 0.2s;
-            background: #f8fafc;
-        }
-        input:focus {
-            border-color: #e65100;
-            background: #ffffff;
-        }
-        .send-btn {
-            background: linear-gradient(135deg, #ff8c00, #e65100);
+        .btn-round-plus {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: #0b4f9c;
             color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             border: none;
-            padding: 11px 20px;
-            border-radius: 25px;
             cursor: pointer;
-            font-weight: 600;
-            font-size: 0.92rem;
+            font-size: 15px;
             flex-shrink: 0;
-            box-shadow: 0 3px 8px rgba(230, 81, 0, 0.25);
         }
-        .send-btn:disabled { background: #cbd5e1; box-shadow: none; cursor: not-allowed; }
+        .input-pill {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            background: #ffffff;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 24px;
+            padding: 0 16px;
+            height: 42px;
+        }
+        .input-pill input {
+            flex: 1;
+            border: none;
+            outline: none;
+            font-size: 0.88rem;
+            color: #1e293b;
+            background: transparent;
+        }
 
-        /* Typing indicator */
-        .typing-indicator { display: flex; align-items: center; gap: 4px; padding: 12px 18px; width: fit-content; }
-        .dot { width: 7px; height: 7px; background-color: #94a3b8; border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
-        .dot:nth-child(1) { animation-delay: -0.32s; }
-        .dot:nth-child(2) { animation-delay: -0.16s; }
-        @keyframes bounce {
-            0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
-            40% { transform: scale(1); opacity: 1; }
+        .btn-send-yellow {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #facc15;
+            color: #0b4f9c;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 3px 8px rgba(250, 204, 21, 0.4);
+            transition: transform 0.15s;
+            flex-shrink: 0;
+        }
+        .btn-send-yellow:hover { transform: scale(1.05); }
+        .btn-send-yellow:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }
+
+        .typing-dots { display: flex; gap: 4px; padding: 10px 14px; }
+        .typing-dots span { width: 5px; height: 5px; background: #94a3b8; border-radius: 50%; animation: blink 1.4s infinite ease-in-out both; }
+        .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes blink { 0%, 80%, 100% { transform: scale(0); opacity: 0.3; } 40% { transform: scale(1); opacity: 1; } }
+
+        @media (max-width: 480px) {
+            .app-container { right: 0; bottom: 0; width: 100vw; height: 100vh; max-height: 100vh; border-radius: 0; }
+            .chat-launcher { bottom: 16px; right: 16px; }
         }
     </style>
 </head>
 <body>
 
-<div class="chat-container" id="chatContainer">
-    <div class="header">
+<div class="chat-launcher" onclick="toggleChat()"><i class="fa-solid fa-solar-panel"></i></div>
+
+<div class="app-container" id="appContainer">
+    <!-- Header -->
+    <div class="app-header">
         <div class="header-left">
-            <div class="header-icon">☀️</div>
-            <div class="header-info">
-                <h1>Solar Sathi</h1>
-                <p><span class="online-dot"></span> Online | Instant Subsidy & Quote</p>
+            <div class="avatar-box">
+                <img src="logo.png" alt="Solar Sathi" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/8618/8618881.png';">
+                <div class="online-dot"></div>
             </div>
+            <div class="header-meta">
+                <h2>Solar Sathi</h2>
+                <div class="status-sub"><span style="color:#10b981;">●</span> Online | AI Solar Consultant</div>
+                <div class="tagline">Sahi Solar • Surakshit Bhavishya</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="solar-badge"><i class="fa-solid fa-sun"></i></div>
+            <button class="close-btn" onclick="toggleChat()">×</button>
         </div>
     </div>
 
-    <div class="messages-box" id="chatBox">
-        <div class="msg bot">Namaste! 🙏 Main Solar Sathi hoon. Main aapke electricity bill ke hisaab se best solar system aur government subsidy calculate karne mein madad karunga.
+    <!-- Chat Messages -->
+    <div class="chat-body" id="chatBody">
+        <div class="msg-row bot">
+            <div class="bubble-avatar"><img src="logo.png" alt="bot" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/8618/8618881.png';"></div>
+            <div class="bubble">
+                ☀️ Namaste & Welcome to Solar Sathi! 🙏
 
-Aapka monthly electricity bill lagbhag kitna aata hai? (e.g. 3000)</div>
+Please select your language / अपनी भाषा चुनें:
+1️⃣ English
+2️⃣ Hinglish (हिंदी)
+
+(You can click below or directly type your monthly electricity bill)
+                <div class="bubble-time">12:00 PM</div>
+            </div>
+        </div>
+
+        <div class="chips-list active-chips">
+            <div class="chip-card highlight" onclick="sendMessage('2')">🇮🇳 Hinglish (हिंदी)</div>
+            <div class="chip-card blue-outline" onclick="sendMessage('1')">🌐 English</div>
+        </div>
     </div>
 
-    <div class="input-area" id="inputArea">
-        <input type="text" id="userInput" placeholder="Apna jawab likhein..." onkeypress="handleKey(event)" autocomplete="off">
-        <button class="send-btn" id="sendBtn" onclick="sendMessage()">Send</button>
+    <!-- Footer Input Bar -->
+    <div class="footer-action-bar">
+        <button class="btn-round-plus"><i class="fa-solid fa-plus"></i></button>
+        <div class="input-pill">
+            <input type="text" id="userInput" placeholder="Apna jawab likhein..." onkeypress="handleKey(event)">
+        </div>
+        <button class="btn-send-yellow" id="sendBtn" onclick="sendMessage()">
+            <i class="fa-solid fa-paper-plane"></i>
+        </button>
     </div>
 </div>
 
 <script>
     let conversationHistory = [];
+    const BACKEND_URL = (window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost" || window.location.protocol === "file:")
+        ? "http://127.0.0.1:8000/chat"
+        : "https://solar-sathi-ai.onrender.com/chat";
 
-    // Mobile Keyboard open hone par automatic scroll to bottom
-    const userInput = document.getElementById("userInput");
-    const chatBox = document.getElementById("chatBox");
-
-    function scrollToBottom() {
-        setTimeout(() => {
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }, 120);
+    function toggleChat() {
+        const c = document.getElementById("appContainer");
+        c.classList.toggle("hidden");
+        if (!c.classList.contains("hidden")) {
+            document.getElementById("userInput").focus();
+        }
     }
 
-    userInput.addEventListener("focus", () => {
-        scrollToBottom();
-        // Mobile layout adjust hone ke liye chhota sa delay
-        setTimeout(() => {
-            userInput.scrollIntoView({ behavior: 'smooth', block: 'end' });
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }, 300);
-    });
+    function getTimeString() {
+        return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
 
-    // Window resize (keyboard appear/disappear) par maintain scroll
-    if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', () => {
-            chatBox.scrollTop = chatBox.scrollHeight;
-        });
+    function isEnglishSelected() {
+        const first = conversationHistory.find(m => m.sender === "user");
+        if (!first) return false;
+        const txt = first.text.toLowerCase().trim();
+        return txt === "1" || txt === "english" || txt === "en";
     }
 
     async function sendMessage(presetText = null) {
-        const inputField = document.getElementById("userInput");
+        const input = document.getElementById("userInput");
         const sendBtn = document.getElementById("sendBtn");
-        const message = presetText ? presetText.trim() : inputField.value.trim();
+        const message = presetText ? presetText.trim() : input.value.trim();
         if (!message) return;
 
-        appendMessage("user", message);
-        if (!presetText) inputField.value = "";
+        appendUserMessage(message);
+        if (!presetText) input.value = "";
         sendBtn.disabled = true;
 
         removeActiveChips();
-        const typingId = appendTypingIndicator();
+        const typingId = appendTyping();
 
         try {
-            const response = await fetch("https://solar-sathi-ai.onrender.com/chat", {
+            const res = await fetch(BACKEND_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    message: message,
-                    history: conversationHistory
-                })
+                body: JSON.stringify({ message: message, history: conversationHistory })
             });
 
-            const data = await response.json();
-            const typingElement = document.getElementById(typingId);
-            if (typingElement) typingElement.remove();
+            const data = await res.json();
+            removeElement(typingId);
 
-            const botReply = data.reply || "Maaf kijiye, koi technical dikkat aayi.";
-            appendMessage("bot", botReply);
-
-            renderContextualChips(botReply);
+            const botReply = data.reply || "Maaf kijiye, koi technical samasya aayi.";
+            appendBotMessage(botReply);
 
             conversationHistory.push({ sender: "user", text: message });
             conversationHistory.push({ sender: "bot", text: botReply });
 
-        } catch (error) {
-            const typingElement = document.getElementById(typingId);
-            if (typingElement) typingElement.remove();
-            appendMessage("bot", "Network Error: Server connect nahi ho pa raha hai.");
+            renderContextualChips(botReply);
+        } catch (e) {
+            removeElement(typingId);
+            appendBotMessage("Network Error: Local backend server offline hai. Make sure uvicorn is running on port 8000.");
         } finally {
             sendBtn.disabled = false;
-            scrollToBottom();
         }
+    }
+
+    function appendUserMessage(text) {
+        const chat = document.getElementById("chatBody");
+        const div = document.createElement("div");
+        div.className = "msg-row user";
+        div.innerHTML = `
+            <div class="bubble">
+                ${escapeHtml(text)}
+                <div class="bubble-time">${getTimeString()} <i class="fa-solid fa-check-double" style="font-size:9px; color:#93c5fd;"></i></div>
+            </div>
+        `;
+        chat.appendChild(div);
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    function appendBotMessage(text) {
+        const chat = document.getElementById("chatBody");
+        const div = document.createElement("div");
+        div.className = "msg-row bot";
+        div.innerHTML = `
+            <div class="bubble-avatar"><img src="logo.png" alt="bot" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/8618/8618881.png';"></div>
+            <div class="bubble">
+                ${escapeHtml(text)}
+                <div class="bubble-time">${getTimeString()}</div>
+            </div>
+        `;
+        chat.appendChild(div);
+        chat.scrollTop = chat.scrollHeight;
     }
 
     function renderContextualChips(reply) {
         const lower = reply.toLowerCase();
-        let options = [];
+        const eng = isEnglishSelected();
+        let chips = [];
 
-        if (lower.includes("ghar ke liye") && lower.includes("dukan")) {
-            options = [
-                { label: "🏠 Ghar ke liye", val: "ghar ke liye" },
-                { label: "🏢 Dukan / Commercial", val: "dukan ke liye" }
+        if ((lower.includes("ghar ke liye") && lower.includes("dukan")) || (lower.includes("residential") && lower.includes("commercial"))) {
+            chips = [
+                { label: "🏠 Ghar ke liye", val: eng ? "Home" : "ghar ke liye", style: "highlight" },
+                { label: "🏢 Dukan / Commercial", val: eng ? "Commercial" : "dukan ke liye", style: "blue-outline" }
             ];
         } else if (lower.includes("on-grid") && lower.includes("hybrid")) {
-            options = [
-                { label: "☀️ On-Grid (Bill Kam)", val: "on-grid" },
-                { label: "🔋 Hybrid (Power Backup)", val: "hybrid" },
-                { label: "❓ Farak samjhao", val: "hybrid system kya hai" }
+            chips = [
+                { label: "☀️ On-Grid (Bill Cut)", val: "On-Grid", style: "highlight" },
+                { label: "🔋 Hybrid (Battery Backup)", val: "Hybrid", style: "blue-outline" },
+                { label: "❓ System Difference?", val: eng ? "What is the difference between On-Grid and Hybrid?" : "On-grid aur Hybrid mein kya antar hai?", style: "blue-outline" }
             ];
-        } else if (lower.includes("dhanyawad") && lower.includes("note ho gayi")) {
-            options = [
-                { label: "💳 EMI / Loan Options", val: "EMI options kya hain?" },
-                { label: "📄 Documents List", val: "Kaun kaun se document lagenge?" },
-                { label: "⚡ Daily Generation (Units)", val: "Ek din mein kitne units banenge?" }
+        } else if (lower.includes("dhanyawad") || lower.includes("thank you")) {
+            chips = [
+                { label: "⚡ Ek din me kitne units?", val: eng ? "How many units will this system generate per day?" : "Ek din mein kitne units banenge?", style: "highlight" },
+                { label: "📄 Documents List", val: eng ? "What documents are required for subsidy?" : "Documents kaun kaun se lagenge?", style: "blue-outline" },
+                { label: "💳 EMI / Loan Options", val: eng ? "What are the loan and EMI options available?" : "EMI options kya hain?", style: "blue-outline" }
             ];
         }
 
-        if (options.length > 0) {
-            const chipsDiv = document.createElement("div");
-            chipsDiv.className = "chips-container active-chips";
-            options.forEach(opt => {
-                const btn = document.createElement("button");
-                btn.className = "chip-btn";
-                btn.innerText = opt.label;
-                btn.onclick = () => sendMessage(opt.val);
-                chipsDiv.appendChild(btn);
+        if (chips.length > 0) {
+            const chat = document.getElementById("chatBody");
+            const wrap = document.createElement("div");
+            wrap.className = "chips-list active-chips";
+            chips.forEach(c => {
+                const btn = document.createElement("div");
+                btn.className = `chip-card ${c.style}`;
+                btn.innerText = c.label;
+                btn.onclick = () => sendMessage(c.val);
+                wrap.appendChild(btn);
             });
-            chatBox.appendChild(chipsDiv);
-            scrollToBottom();
+            chat.appendChild(wrap);
+            chat.scrollTop = chat.scrollHeight;
         }
     }
 
@@ -344,27 +500,39 @@ Aapka monthly electricity bill lagbhag kitna aata hai? (e.g. 3000)</div>
         document.querySelectorAll(".active-chips").forEach(el => el.remove());
     }
 
-    function appendMessage(sender, text) {
-        const msgDiv = document.createElement("div");
-        msgDiv.className = `msg ${sender}`;
-        msgDiv.innerText = text;
-        chatBox.appendChild(msgDiv);
-        scrollToBottom();
+    function appendTyping() {
+        const chat = document.getElementById("chatBody");
+        const id = "typing-" + Date.now();
+        const div = document.createElement("div");
+        div.id = id;
+        div.className = "msg-row bot";
+        div.innerHTML = `
+            <div class="bubble-avatar"><img src="logo.png" alt="bot" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/8618/8618881.png';"></div>
+            <div class="bubble typing-dots">
+                <span></span><span></span><span></span>
+            </div>
+        `;
+        chat.appendChild(div);
+        chat.scrollTop = chat.scrollHeight;
+        return id;
     }
 
-    function appendTypingIndicator() {
-        const uniqueId = "typing-" + Date.now();
-        const typingDiv = document.createElement("div");
-        typingDiv.id = uniqueId;
-        typingDiv.className = "msg bot typing-indicator";
-        typingDiv.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
-        chatBox.appendChild(typingDiv);
-        scrollToBottom();
-        return uniqueId;
+    function removeElement(id) {
+        const el = document.getElementById(id);
+        if (el) el.remove();
     }
 
     function handleKey(e) {
         if (e.key === "Enter") sendMessage();
+    }
+
+    function escapeHtml(str) {
+        return str
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 </script>
 
