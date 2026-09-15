@@ -304,6 +304,7 @@
     </div>
 
     <div class="chat-body" id="chatBody">
+        <!-- Clean Welcome Bubble without any static time -->
         <div class="msg-row bot">
             <div class="bubble-avatar"><img src="logo.png" alt="bot" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/8618/8618881.png';"></div>
             <div class="bubble">☀️ Namaste & Welcome to Solar Sathi! 🙏
@@ -312,7 +313,7 @@ Please select your language / अपनी भाषा चुनें:
 1️⃣ English
 2️⃣ Hinglish (हिंदी)
 
-(You can click below or directly type your monthly electricity bill)<div class="bubble-time">12:00 PM</div></div>
+(You can click below or directly type your monthly electricity bill)</div>
         </div>
 
         <div class="chips-list active-chips">
@@ -337,6 +338,10 @@ Please select your language / अपनी भाषा चुनें:
         ? "http://127.0.0.1:8000/chat"
         : "https://solar-sathi-ai.onrender.com/chat";
 
+    function getTimeString() {
+        return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+
     function scrollToBottom() {
         const chat = document.getElementById("chatBody");
         setTimeout(() => {
@@ -355,10 +360,6 @@ Please select your language / अपनी भाषा चुनें:
         });
     }
 
-    function getTimeString() {
-        return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-
     function isEnglishSelected() {
         const first = conversationHistory.find(m => m.sender === "user");
         if (!first) return false;
@@ -368,8 +369,6 @@ Please select your language / अपनी भाषा चुनें:
 
     let isSending = false;
 
-    // displayLabel: user bubble mein kya dikhega
-    // presetText: backend ko kya jayega
     async function sendMessage(presetText = null, displayLabel = null) {
         if (isSending) return;
         const input = document.getElementById("userInput");
@@ -428,7 +427,6 @@ Please select your language / अपनी भाषा चुनें:
         scrollToBottom();
     }
 
-    // Har line ka leading/trailing space trim karke left alignment fix ki gayi
     function cleanIndent(rawStr) {
         return rawStr
             .split('\n')
