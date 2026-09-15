@@ -2,13 +2,21 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
     <title>Solar Sathi - AI Solar Consultant</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { background: #f0f2f5; min-height: 100vh; }
+        
+        html, body {
+            width: 100%;
+            height: 100%;
+            height: 100dvh;
+            overflow: hidden;
+            background: #f0f2f5;
+        }
 
+        /* Launcher icon for desktop only */
         .chat-launcher {
             position: fixed;
             bottom: 24px;
@@ -25,48 +33,35 @@
             box-shadow: 0 10px 25px rgba(11, 79, 156, 0.35);
             cursor: pointer;
             z-index: 1000;
-            transition: transform 0.2s;
         }
-        .chat-launcher:hover { transform: scale(1.06); }
 
+        /* Main Container */
         .app-container {
             position: fixed;
-            bottom: 92px;
-            right: 24px;
-            width: 410px;
-            max-width: calc(100vw - 32px);
-            height: 650px;
-            max-height: calc(100vh - 110px);
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            width: 100vw;
+            height: 100dvh;
             background: #ffffff;
-            border-radius: 24px;
-            box-shadow: 0 18px 50px rgba(0, 30, 70, 0.2);
             display: flex;
             flex-direction: column;
             overflow: hidden;
             z-index: 999;
         }
 
-        .app-container.hidden { display: none; }
-
-        /* Top Header - Exact Second Image Look */
+        /* Fixed Blue Header */
         .app-header {
             background: #0b4f9c;
             color: white;
-            padding: 14px 16px 18px 16px;
+            padding: 12px 14px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            position: relative;
-        }
-        .app-header::after {
-            content: "";
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            width: 110px;
-            height: 8px;
-            background: #ffcc00;
-            border-top-left-radius: 8px;
+            flex-shrink: 0;
+            border-bottom: 2px solid #ffcc00;
+            z-index: 10;
         }
         .header-left { display: flex; align-items: center; gap: 10px; }
         
@@ -99,36 +94,29 @@
             border: 2px solid white;
         }
 
-        .header-meta h2 { font-size: 1.02rem; font-weight: 700; line-height: 1.2; }
+        .header-meta h2 { font-size: 1.05rem; font-weight: 700; line-height: 1.2; }
         .header-meta .status-sub { font-size: 0.72rem; color: #dbeafe; display: flex; align-items: center; gap: 4px; }
-        .header-meta .tagline { font-size: 0.65rem; color: #93c5fd; }
+        .header-meta .tagline { font-size: 0.65rem; color: #ffcc00; font-weight: 500; }
 
         .header-right { display: flex; align-items: center; gap: 12px; }
         .solar-badge { font-size: 1.4rem; color: #ffcc00; }
-        .close-btn {
-            background: none;
-            border: none;
-            color: #ffffff;
-            font-size: 22px;
-            cursor: pointer;
-            opacity: 0.85;
-            line-height: 1;
-        }
 
-        /* Chat Body */
+        /* Scrollable Chat Body */
         .chat-body {
             flex: 1;
             background: #f8fafc;
             overflow-y: auto;
-            padding: 16px 14px;
+            -webkit-overflow-scrolling: touch;
+            padding: 14px 12px;
             display: flex;
             flex-direction: column;
-            gap: 14px;
+            gap: 12px;
         }
 
-        /* Message Layouts */
+        /* Message Rows */
         .msg-row {
             display: flex;
+            align-items: flex-start;
             gap: 8px;
             max-width: 88%;
         }
@@ -159,19 +147,18 @@
             object-fit: cover;
         }
 
-        /* Clean Compact Rounded Bubbles */
         .bubble {
-            padding: 10px 14px;
+            padding: 9px 13px;
             font-size: 0.88rem;
             line-height: 1.45;
             white-space: pre-wrap;
             word-break: break-word;
+            border-radius: 16px;
         }
 
         .bot .bubble {
             background: #edf5fd;
             color: #0f172a;
-            border-radius: 18px;
             border-top-left-radius: 4px;
             border: 1px solid #e0ecf8;
         }
@@ -179,11 +166,8 @@
         .user .bubble {
             background: #0b4f9c;
             color: #ffffff;
-            border-radius: 18px;
             border-top-right-radius: 4px;
-            box-shadow: 0 3px 8px rgba(11, 79, 156, 0.16);
-            display: inline-block;
-            width: auto;
+            box-shadow: 0 2px 6px rgba(11, 79, 156, 0.15);
         }
 
         .bubble-time {
@@ -217,7 +201,6 @@
             align-items: center;
             gap: 6px;
             cursor: pointer;
-            transition: all 0.15s ease;
         }
         .chip-card.highlight {
             background: #fffbeb;
@@ -228,19 +211,17 @@
             border-color: #93c5fd;
             color: #0b4f9c;
         }
-        .chip-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 10px rgba(0,0,0,0.06);
-        }
 
-        /* Footer Input Bar */
+        /* Fixed Footer Input Bar */
         .footer-action-bar {
-            padding: 10px 14px;
+            padding: 8px 10px 12px 10px;
             background: #ffffff;
             border-top: 1px solid #f1f5f9;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
+            flex-shrink: 0;
+            width: 100%;
         }
         .btn-round-plus {
             width: 36px;
@@ -261,16 +242,17 @@
             display: flex;
             align-items: center;
             background: #ffffff;
-            border: 1.5px solid #e2e8f0;
+            border: 1.5px solid #cbd5e1;
             border-radius: 24px;
-            padding: 0 16px;
+            padding: 0 14px;
             height: 42px;
+            min-width: 0;
         }
         .input-pill input {
-            flex: 1;
+            width: 100%;
             border: none;
             outline: none;
-            font-size: 0.88rem;
+            font-size: 0.92rem;
             color: #1e293b;
             background: transparent;
         }
@@ -287,12 +269,8 @@
             border: none;
             font-size: 16px;
             cursor: pointer;
-            box-shadow: 0 3px 8px rgba(250, 204, 21, 0.4);
-            transition: transform 0.15s;
             flex-shrink: 0;
         }
-        .btn-send-yellow:hover { transform: scale(1.05); }
-        .btn-send-yellow:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }
 
         .typing-dots { display: flex; gap: 4px; padding: 10px 14px; }
         .typing-dots span { width: 5px; height: 5px; background: #94a3b8; border-radius: 50%; animation: blink 1.4s infinite ease-in-out both; }
@@ -300,18 +278,32 @@
         .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
         @keyframes blink { 0%, 80%, 100% { transform: scale(0); opacity: 0.3; } 40% { transform: scale(1); opacity: 1; } }
 
-        @media (max-width: 480px) {
-            .app-container { right: 0; bottom: 0; width: 100vw; height: 100vh; max-height: 100vh; border-radius: 0; }
-            .chat-launcher { bottom: 16px; right: 16px; }
+        /* Hide desktop toggle button on mobile */
+        @media (max-width: 768px) {
+            .chat-launcher { display: none !important; }
+        }
+
+        /* Desktop Mode Constraint */
+        @media (min-width: 769px) {
+            .app-container {
+                top: auto;
+                left: auto;
+                bottom: 92px;
+                right: 24px;
+                width: 410px;
+                height: 650px;
+                border-radius: 24px;
+                box-shadow: 0 18px 50px rgba(0, 30, 70, 0.2);
+            }
         }
     </style>
 </head>
 <body>
 
-<div class="chat-launcher" onclick="toggleChat()"><i class="fa-solid fa-solar-panel"></i></div>
+<div class="chat-launcher"><i class="fa-solid fa-solar-panel"></i></div>
 
 <div class="app-container" id="appContainer">
-    <!-- Header -->
+    <!-- Static Locked Header -->
     <div class="app-header">
         <div class="header-left">
             <div class="avatar-box">
@@ -326,24 +318,20 @@
         </div>
         <div class="header-right">
             <div class="solar-badge"><i class="fa-solid fa-sun"></i></div>
-            <button class="close-btn" onclick="toggleChat()">×</button>
         </div>
     </div>
 
-    <!-- Chat Messages -->
+    <!-- Scrollable Messages Body -->
     <div class="chat-body" id="chatBody">
         <div class="msg-row bot">
             <div class="bubble-avatar"><img src="logo.png" alt="bot" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/8618/8618881.png';"></div>
-            <div class="bubble">
-                ☀️ Namaste & Welcome to Solar Sathi! 🙏
+            <div class="bubble">☀️ Namaste & Welcome to Solar Sathi! 🙏
 
 Please select your language / अपनी भाषा चुनें:
 1️⃣ English
 2️⃣ Hinglish (हिंदी)
 
-(You can click below or directly type your monthly electricity bill)
-                <div class="bubble-time">12:00 PM</div>
-            </div>
+(You can click below or directly type your monthly electricity bill)<div class="bubble-time">12:00 PM</div></div>
         </div>
 
         <div class="chips-list active-chips">
@@ -352,7 +340,7 @@ Please select your language / अपनी भाषा चुनें:
         </div>
     </div>
 
-    <!-- Footer Input Bar -->
+    <!-- Static Locked Bottom Bar -->
     <div class="footer-action-bar">
         <button class="btn-round-plus"><i class="fa-solid fa-plus"></i></button>
         <div class="input-pill">
@@ -369,14 +357,6 @@ Please select your language / अपनी भाषा चुनें:
     const BACKEND_URL = (window.location.hostname === "127.0.0.1" || window.location.hostname === "localhost" || window.location.protocol === "file:")
         ? "http://127.0.0.1:8000/chat"
         : "https://solar-sathi-ai.onrender.com/chat";
-
-    function toggleChat() {
-        const c = document.getElementById("appContainer");
-        c.classList.toggle("hidden");
-        if (!c.classList.contains("hidden")) {
-            document.getElementById("userInput").focus();
-        }
-    }
 
     function getTimeString() {
         return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -421,7 +401,7 @@ Please select your language / अपनी भाषा चुनें:
             renderContextualChips(botReply);
         } catch (e) {
             removeElement(typingId);
-            appendBotMessage("Network Error: Local backend server offline hai. Make sure uvicorn is running on port 8000.");
+            appendBotMessage("Network Error: Local backend server offline hai.");
         } finally {
             sendBtn.disabled = false;
         }
