@@ -1,11 +1,10 @@
 """
-Solar Sathi AI — v6.7 Enterprise Final Solid Release + Meta WhatsApp Integration
-- Real-time Groq Model Discovery (Resolves 404 Model Not Found)
-- Deterministic Daily Generation Output (Zero AI dependency for unit math)
+Solar Sathi AI — v6.8 Enterprise Multi-Tenant & Smart Lead Routing Release
+- Real-time Groq Model Discovery
+- Deterministic Daily Generation Output
 - Granular 4 kW Sizing for Rs 4500-5500 Bills
-- Transparent Hybrid DISCOM Net-Metering & Storage Terms
-- Upgraded Documents Checklist (Aadhaar & Electricity Bill Name Matching)
-- Word-Boundary Geographic Routing & Telegram Debouncing
+- Transparent Hybrid DISCOM Net-Metering Terms
+- Dynamic Client Routing: Pragati Solar Hub vs. Admin Demo
 - Official Meta Cloud API WhatsApp Lead Alerts (Zero Ban Risk)
 """
 
@@ -43,6 +42,7 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 META_ACCESS_TOKEN = os.getenv("META_ACCESS_TOKEN")
 META_PHONE_ID = os.getenv("META_PHONE_ID", "1358122214045364")
 ADMIN_WHATSAPP = os.getenv("ADMIN_WHATSAPP", "918173031237")
+PRAGATI_WHATSAPP = os.getenv("PRAGATI_WHATSAPP", ADMIN_WHATSAPP)
 
 CANDIDATE_MODELS = [
     "llama-3.3-70b-versatile",
@@ -73,7 +73,7 @@ LEADS_FILE = "leads.csv"
 CSV_HEADERS = [
     "Timestamp", "Language", "Name", "Mobile", "City", "State/DISCOM", "Monthly Bill",
     "Estimated kW", "Roof Area Req", "Central Subsidy", "State Subsidy", "Total Benefit",
-    "Property Type", "System Type", "Status", "Priority",
+    "Property Type", "System Type", "Status", "Priority", "Client Source"
 ]
 
 COMPLETED_MOBILES = set()
@@ -100,6 +100,7 @@ class HistoryMessage(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     history: List[HistoryMessage] = []
+    client: Optional[str] = "demo"
 
 # ------------------------------------------------------------------
 # WORD-BOUNDARY GEOGRAPHIC INTELLIGENCE
@@ -235,7 +236,7 @@ def get_priority(bill: Optional[int], prop: Optional[str], sys_type: Optional[st
 # TELEGRAM ALERTS
 # ------------------------------------------------------------------
 
-def send_telegram_alert(state: dict, complete: bool = True):
+def send_telegram_alert(state: dict, complete: bool = True, client_source: str = "demo"):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         return
 
@@ -255,7 +256,8 @@ def send_telegram_alert(state: dict, complete: bool = True):
     if is_comm:
         state_sub = 0
 
-    header_tag = "🚨 *NEW QUALIFIED SOLAR LEAD!* ☀️" if complete else "🟡 *INCOMPLETE LEAD (FOLLOW-UP!)* ⚠️"
+    portal_name = "Pragati Solar Hub" if client_source == "pragati" else "Solar Sathi (Demo)"
+    header_tag = f"🚨 *NEW QUALIFIED LEAD [{portal_name}]!* ☀️" if complete else f"🟡 *INCOMPLETE LEAD [{portal_name}]!* ⚠️"
     status_label = "COMPLETE LEAD" if complete else "PARTIAL (City Pending)"
 
     name = state.get("name") or "Not Provided"
@@ -303,20 +305,28 @@ def send_telegram_alert(state: dict, complete: bool = True):
     except Exception as e:
         print(f"[Telegram Error]: {e}")
 
-async def send_delayed_incomplete_alert(state: dict, delay_seconds: int = 60):
+async def send_delayed_incomplete_alert(state: dict, client_source: str = "demo", delay_seconds: int = 60):
     await asyncio.sleep(delay_seconds)
     mobile = state.get("mobile")
     if mobile and mobile not in COMPLETED_MOBILES:
-        send_telegram_alert(state, complete=False)
+        send_telegram_alert(state, complete=False, client_source=client_source)
 
 # ------------------------------------------------------------------
-# META CLOUD API WHATSAPP ALERTS (ZERO BAN RISK)
+# META CLOUD API WHATSAPP ALERTS (ZERO BAN RISK + MULTI-TENANT)
 # ------------------------------------------------------------------
 
-def send_whatsapp_alert(state: dict):
+def send_whatsapp_alert(state: dict, client_source: str = "demo"):
     if not META_ACCESS_TOKEN or not META_PHONE_ID:
         print("[Meta WhatsApp Warning]: META_ACCESS_TOKEN ya META_PHONE_ID missing hai.")
         return
+
+    # Routing logic: Decide target phone number based on client source
+    if client_source == "pragati":
+        target_number = os.getenv("PRAGATI_WHATSAPP") or ADMIN_WHATSAPP
+        portal_name = "PRAGATI SOLAR HUB"
+    else:
+        target_number = ADMIN_WHATSAPP
+        portal_name = "SOLAR SATHI DEMO"
 
     prop = state.get("property_type")
     is_comm = prop and prop.lower() == "commercial"
@@ -354,7 +364,7 @@ def send_whatsapp_alert(state: dict):
     time_str = datetime.now(IST).strftime("%d %b %Y, %I:%M %p")
 
     alert_text = (
-        f"🚨 *NEW SOLAR SATHI LEAD!* ☀️\n"
+        f"🚨 *NEW SOLAR LEAD [{portal_name}]!* ☀️\n"
         f"━━━━━━━━━━━━━━━━━━━\n"
         f"👤 *Customer:* {name}\n"
         f"📞 *Mobile:* {mobile}\n"
@@ -377,7 +387,7 @@ def send_whatsapp_alert(state: dict):
     }
     payload = {
         "messaging_product": "whatsapp",
-        "to": ADMIN_WHATSAPP,
+        "to": target_number,
         "type": "text",
         "text": {"body": alert_text}
     }
@@ -385,14 +395,14 @@ def send_whatsapp_alert(state: dict):
     try:
         res = requests.post(url, json=payload, headers=headers, timeout=8)
         if res.status_code == 200:
-            print("[Meta WhatsApp Success]: Lead alert delivered successfully!")
+            print(f"[Meta WhatsApp Success]: Alert successfully sent to {target_number} ({portal_name})!")
         else:
             print(f"[Meta WhatsApp Failed]: {res.status_code} - {res.text}")
     except Exception as e:
         print(f"[Meta WhatsApp Error]: {e}")
 
 # ------------------------------------------------------------------
-# TEMPLATES & COPY (ENHANCED DOCUMENTS & NET-METERING NOTES)
+# TEMPLATES & COPY
 # ------------------------------------------------------------------
 
 GREETING_MESSAGE = (
@@ -658,7 +668,7 @@ async def get_faq_answer(question: str, kw: Optional[int], property_type: Option
 # LEAD SAVING
 # ------------------------------------------------------------------
 
-def upsert_lead(state: dict, complete: bool):
+def upsert_lead(state: dict, complete: bool, client_source: str = "demo"):
     mobile = state.get("mobile")
     if not mobile:
         return
@@ -699,6 +709,7 @@ def upsert_lead(state: dict, complete: bool):
         state.get("system_type") or "Not Provided",
         "COMPLETE" if complete else "PARTIAL",
         priority,
+        client_source
     ]
 
     with open(LEADS_FILE, mode="r", newline="", encoding="utf-8") as f:
@@ -723,7 +734,7 @@ def upsert_lead(state: dict, complete: bool):
         writer.writerows(rows)
 
 # ------------------------------------------------------------------
-# CONFIRMATION BUILDER (WITH DISCOM NET-METERING TRANSPARENCY)
+# CONFIRMATION BUILDER
 # ------------------------------------------------------------------
 
 def build_confirmation(state: dict) -> str:
@@ -860,7 +871,7 @@ def build_state(customer_messages: List[str]):
 
     return state, last_outcome, next_field()
 
-async def process_message(history: List[HistoryMessage], message: str, bg_tasks: BackgroundTasks):
+async def process_message(history: List[HistoryMessage], message: str, bg_tasks: BackgroundTasks, client_source: str = "demo"):
     customer_messages = [h.text for h in history if h.sender == "user"] + [message]
     state, outcome, pending_field = build_state(customer_messages)
     lang = state.get("language") or "hinglish"
@@ -875,16 +886,17 @@ async def process_message(history: List[HistoryMessage], message: str, bg_tasks:
         complete = all(state[f] is not None for f in FIELD_ORDER)
 
         if state.get("mobile"):
-            upsert_lead(state, complete)
+            upsert_lead(state, complete, client_source)
             if field_filled == "mobile" and not complete:
-                bg_tasks.add_task(send_delayed_incomplete_alert, dict(state), 60)
+                bg_tasks.add_task(send_delayed_incomplete_alert, dict(state), client_source, 60)
 
         if complete:
             if state.get("mobile"):
                 COMPLETED_MOBILES.add(state["mobile"])
-            # Background alerts: Telegram & Official WhatsApp (Meta Cloud API)
-            bg_tasks.add_task(send_telegram_alert, state, True)
-            bg_tasks.add_task(send_whatsapp_alert, state)
+            
+            # Dynamic multi-tenant dispatch
+            bg_tasks.add_task(send_telegram_alert, state, True, client_source)
+            bg_tasks.add_task(send_whatsapp_alert, state, client_source)
             return build_confirmation(state), state
 
         if field_filled in ["language", "bill"]:
@@ -957,7 +969,7 @@ async def process_message(history: List[HistoryMessage], message: str, bg_tasks:
         if is_sensitive_topic(message):
             return t["SENSITIVE_REPLY"], None
             
-        # PURE PYTHON DETERMINISTIC UNITS (Zero AI/API Failures)
+        # PURE PYTHON DETERMINISTIC UNITS
         if any(w in tl for w in ["unit", "units", "generate", "generation", "bijli"]):
             kw_now = kw_val if kw_val else 3
             u_min = kw_now * 4
@@ -983,7 +995,7 @@ async def process_message(history: List[HistoryMessage], message: str, bg_tasks:
 @app.post("/chat")
 async def chat_endpoint(req: ChatRequest, bg_tasks: BackgroundTasks):
     try:
-        reply, _ = await process_message(req.history, req.message, bg_tasks)
+        reply, _ = await process_message(req.history, req.message, bg_tasks, client_source=req.client)
         return {"reply": reply}
     except Exception as e:
         print(f"Chat Endpoint Error: {e}")
