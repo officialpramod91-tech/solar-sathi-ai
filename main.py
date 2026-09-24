@@ -1,11 +1,12 @@
 """
-Solar Sathi AI — v6.7 Enterprise Final Solid Release
+Solar Sathi AI — v6.7 Enterprise Final Solid Release + Meta WhatsApp Integration
 - Real-time Groq Model Discovery (Resolves 404 Model Not Found)
 - Deterministic Daily Generation Output (Zero AI dependency for unit math)
 - Granular 4 kW Sizing for Rs 4500-5500 Bills
 - Transparent Hybrid DISCOM Net-Metering & Storage Terms
 - Upgraded Documents Checklist (Aadhaar & Electricity Bill Name Matching)
 - Word-Boundary Geographic Routing & Telegram Debouncing
+- Official Meta Cloud API WhatsApp Lead Alerts (Zero Ban Risk)
 """
 
 import os
@@ -34,8 +35,14 @@ if not API_KEY:
 
 client = Groq(api_key=API_KEY)
 
+# Telegram Credentials
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+
+# Meta Cloud API Credentials (Official WhatsApp)
+META_ACCESS_TOKEN = os.getenv("META_ACCESS_TOKEN")
+META_PHONE_ID = os.getenv("META_PHONE_ID", "1358122214045364")
+ADMIN_WHATSAPP = os.getenv("ADMIN_WHATSAPP", "918173031237")
 
 CANDIDATE_MODELS = [
     "llama-3.3-70b-versatile",
@@ -301,6 +308,88 @@ async def send_delayed_incomplete_alert(state: dict, delay_seconds: int = 60):
     mobile = state.get("mobile")
     if mobile and mobile not in COMPLETED_MOBILES:
         send_telegram_alert(state, complete=False)
+
+# ------------------------------------------------------------------
+# META CLOUD API WHATSAPP ALERTS (ZERO BAN RISK)
+# ------------------------------------------------------------------
+
+def send_whatsapp_alert(state: dict):
+    if not META_ACCESS_TOKEN or not META_PHONE_ID:
+        print("[Meta WhatsApp Warning]: META_ACCESS_TOKEN ya META_PHONE_ID missing hai.")
+        return
+
+    prop = state.get("property_type")
+    is_comm = prop and prop.lower() == "commercial"
+    sys_type = state.get("system_type") or "N/A"
+
+    kw, central_sub = (None, None)
+    if state.get("bill") is not None:
+        kw, central_sub = estimate_kw_and_subsidy(state["bill"], prop)
+
+    priority = get_priority(state.get("bill"), prop, sys_type, True)
+    region, discom, state_sub, _ = analyze_location_and_perks(
+        state.get("city") or "", kw or 3, central_sub or 0, state.get("language") or "hinglish"
+    )
+
+    if is_comm:
+        state_sub = 0
+
+    name = state.get("name") or "Not Provided"
+    mobile = state.get("mobile") or "Not Provided"
+    city = state.get("city") or "Pending"
+    bill_val = f"₹{state['bill']}" if state.get("bill") is not None else "N/A"
+    prop_val = "Commercial" if is_comm else (prop or "Residential")
+    sys_info = f"{kw} kW ({sys_type})" if kw else "Pending"
+    roof_val = get_roof_area_sqft(kw) if kw else "Pending"
+
+    if is_comm:
+        sub_line = "Commercial (40% Tax Depreciation)"
+    else:
+        total_benefit = (central_sub or 0) + state_sub
+        if state_sub > 0:
+            sub_line = f"₹{central_sub:,} (Central) + ₹{state_sub:,} (State) = ₹{total_benefit:,}"
+        else:
+            sub_line = f"₹{central_sub:,}" if central_sub else "Pending"
+
+    time_str = datetime.now(IST).strftime("%d %b %Y, %I:%M %p")
+
+    alert_text = (
+        f"🚨 *NEW SOLAR SATHI LEAD!* ☀️\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"👤 *Customer:* {name}\n"
+        f"📞 *Mobile:* {mobile}\n"
+        f"📍 *Location:* {city} ({region})\n"
+        f"⚡ *DISCOM:* {discom}\n"
+        f"💡 *Monthly Bill:* {bill_val}\n"
+        f"🏢 *Property:* {prop_val}\n"
+        f"☀️ *System:* {sys_info}\n"
+        f"🏠 *Roof Space Req:* ~{roof_val}\n"
+        f"💰 *Total Subsidy:* {sub_line}\n"
+        f"📊 *Priority:* {priority}\n"
+        f"━━━━━━━━━━━━━━━━━━━\n"
+        f"⏰ {time_str}"
+    )
+
+    url = f"https://graph.facebook.com/v20.0/{META_PHONE_ID}/messages"
+    headers = {
+        "Authorization": f"Bearer {META_ACCESS_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": ADMIN_WHATSAPP,
+        "type": "text",
+        "text": {"body": alert_text}
+    }
+
+    try:
+        res = requests.post(url, json=payload, headers=headers, timeout=8)
+        if res.status_code == 200:
+            print("[Meta WhatsApp Success]: Lead alert delivered successfully!")
+        else:
+            print(f"[Meta WhatsApp Failed]: {res.status_code} - {res.text}")
+    except Exception as e:
+        print(f"[Meta WhatsApp Error]: {e}")
 
 # ------------------------------------------------------------------
 # TEMPLATES & COPY (ENHANCED DOCUMENTS & NET-METERING NOTES)
@@ -793,7 +882,9 @@ async def process_message(history: List[HistoryMessage], message: str, bg_tasks:
         if complete:
             if state.get("mobile"):
                 COMPLETED_MOBILES.add(state["mobile"])
+            # Background alerts: Telegram & Official WhatsApp (Meta Cloud API)
             bg_tasks.add_task(send_telegram_alert, state, True)
+            bg_tasks.add_task(send_whatsapp_alert, state)
             return build_confirmation(state), state
 
         if field_filled in ["language", "bill"]:
