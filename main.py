@@ -1027,13 +1027,17 @@ async def process_message(history: List[HistoryMessage], message: str, bg_tasks:
     return t[f"ASK_{pending_field.upper()}"], None
 
 # ------------------------------------------------------------------
-# APP ENTRY & HEALTH MONITORING
+# APP ENTRY & HEALTH MONITORING (KEEP-ALIVE ZERO COLD-START)
 # ------------------------------------------------------------------
 
 @app.get("/health")
 def health_check():
     """Keep-alive ping endpoint to prevent Render instance sleep (Cold Start fix)"""
-    return {"status": "ok", "service": "Solar Sathi AI", "timestamp": datetime.now(IST).isoformat()}
+    return {
+        "status": "ok",
+        "service": "Solar Sathi AI",
+        "timestamp": datetime.now(IST).isoformat()
+    }
 
 @app.post("/chat")
 async def chat_endpoint(req: ChatRequest, bg_tasks: BackgroundTasks):
@@ -1047,4 +1051,5 @@ async def chat_endpoint(req: ChatRequest, bg_tasks: BackgroundTasks):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    # Render aur cloud deployments ke liye host='0.0.0.0' hona zaroori hai
+    uvicorn.run(app, host="0.0.0.0", port=8000)
