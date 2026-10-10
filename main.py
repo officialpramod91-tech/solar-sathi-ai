@@ -1,12 +1,13 @@
 """
-Solar Sathi AI — Dedicated Engine (v9.0 Pan-India Production)
+Solar Sathi AI — Dedicated Engine (v9.5 Pan-India Enterprise)
 Platform: BijliGyaan.in
-Features:
-- Pan-India Postal PIN Code Detection (UP, Delhi, RJ, MP, MH, Bihar, HR, etc.)
-- Strict 6-Step Lead State Funnel: Bill -> Property -> System -> Location -> Consent -> Phone & Name
+Author: Pramod
+Updates:
+- Clean DISCOM Label: "UP State DISCOM (UPPCL / UPNEDA)"
+- Hybrid Subsidy Accuracy Disclaimer: (Grid-Tied Inverter & Panels par lagu)
+- Ground-level Wording: "BijliGyaan Verified Solar Installer" replaces "Engineer"
 - Mid-Funnel Global FAQ Interceptor (EMI, Loans, Generation Units, Documents)
-- No Third-Party Multi-Tenant Routing (Dedicated BijliGyaan Engine)
-- Formatted INR & Real-time Telegram Push
+- Pan-India Postal PIN Code Mapping
 """
 
 import os
@@ -80,15 +81,15 @@ def format_inr(number: int) -> str:
 
 def estimate_kw_and_subsidy(bill: int, prop_type: Optional[str] = "Residential") -> Tuple[int, int]:
     if bill <= 1500: kw, sub = 1, 30000
-    elif bill <= 2800: kw, sub = 2, 60000
-    elif bill <= 4500: kw, sub = 3, 78000
-    elif bill <= 6500: kw, sub = 4, 78000
-    elif bill <= 8500: kw, sub = 5, 78000
-    else: kw, sub = 7, 78000
+    elif bill <= 2800: kw, space_sub = 2, 60000
+    elif bill <= 4500: kw, space_sub = 3, 78000
+    elif bill <= 6500: kw, space_sub = 4, 78000
+    elif bill <= 8500: kw, space_sub = 5, 78000
+    else: kw, space_sub = 7, 78000
 
     if prop_type and "commercial" in prop_type.lower():
         return kw, 0
-    return kw, sub
+    return kw, space_sub
 
 def get_roof_area_sqft(kw: int) -> str:
     return f"{kw * 80} - {kw * 100} sq. ft."
@@ -97,44 +98,46 @@ def get_roof_area_sqft(kw: int) -> str:
 # PAN-INDIA POSTAL INTELLIGENCE
 # ------------------------------------------------------------------
 
-def detect_region_and_subsidy(location_text: str, kw: int, central_sub: int) -> Tuple[str, str, int, str]:
+def detect_region_and_subsidy(location_text: str, kw: int, central_sub: int, sys_t: Optional[str] = "On-Grid") -> Tuple[str, str, int, str]:
     text = location_text.lower()
     pin_match = re.search(r"\b([1-8]\d{5})\b", text)
     pin = pin_match.group(1) if pin_match else ""
     pin_prefix = pin[:2] if len(pin) >= 2 else ""
 
+    hybrid_note = " (Grid-Tied Inverter & Panels par lagu)" if (sys_t and "hybrid" in sys_t.lower()) else ""
+
     # 1. Uttar Pradesh (Prefix: 20 to 28)
     if (pin_prefix and 20 <= int(pin_prefix) <= 28) or any(k in text for k in ["up", "uttar pradesh", "kanpur", "lucknow", "khalilabad", "basti", "gorakhpur", "varanasi", "noida", "ghaziabad", "agra", "meerut", "prayagraj"]):
         state_sub = min(kw * 15000, 30000) if central_sub > 0 else 0
         total = central_sub + state_sub
-        return "Uttar Pradesh", "UPNEDA / MVVNL / DVVNL / PVVNL / PuVVNL / KESCO", state_sub, f"Total {format_inr(total)} (Central + UP State UPNEDA Subsidy)"
+        return "Uttar Pradesh", "UP State DISCOM (UPPCL / UPNEDA)", state_sub, f"Total {format_inr(total)} (Central + UP State UPNEDA Subsidy){hybrid_note}"
 
     # 2. Delhi NCR (Prefix: 11)
     if pin_prefix == "11" or any(k in text for k in ["delhi", "new delhi"]):
-        return "Delhi NCR", "BSES / TPDDL (Delhi Solar Policy GBI)", 0, f"Total {format_inr(central_sub)} Central Subsidy + Monthly GBI Credit"
+        return "Delhi NCR", "BSES / TPDDL (Delhi Solar Policy GBI)", 0, f"Total {format_inr(central_sub)} Central Subsidy + Monthly GBI Credit{hybrid_note}"
 
     # 3. Rajasthan (Prefix: 30 to 34)
     if (pin_prefix and 30 <= int(pin_prefix) <= 34) or any(k in text for k in ["rajasthan", "jaipur", "jodhpur", "kota", "udaipur", "bikaner", "ajmer"]):
-        return "Rajasthan", "JVVNL / AVVNL / JdVVNL", 0, f"Total {format_inr(central_sub)} Central Subsidy (Highest Solar Generation Belt)"
+        return "Rajasthan", "JVVNL / AVVNL / JdVVNL", 0, f"Total {format_inr(central_sub)} Central Subsidy (High Sun Generation Belt){hybrid_note}"
 
     # 4. Maharashtra (Prefix: 40 to 44)
     if (pin_prefix and 40 <= int(pin_prefix) <= 44) or any(k in text for k in ["maharashtra", "mumbai", "pune", "nagpur", "nashik", "thane"]):
-        return "Maharashtra", "MSEDCL (Mahavitaran) / Tata Power / Adani", 0, f"Total {format_inr(central_sub)} Central Subsidy (Fast Payback High Tariff Slab)"
+        return "Maharashtra", "MSEDCL (Mahavitaran) / Tata Power / Adani", 0, f"Total {format_inr(central_sub)} Central Subsidy (Fast Payback High Tariff Slab){hybrid_note}"
 
     # 5. Madhya Pradesh (Prefix: 45 to 48)
     if (pin_prefix and 45 <= int(pin_prefix) <= 48) or any(k in text for k in ["mp", "madhya pradesh", "indore", "bhopal", "jabalpur", "gwalior"]):
-        return "Madhya Pradesh", "MPPKVVCL / MPMKVVCL (Urja Saksharta)", 0, f"Total {format_inr(central_sub)} Central Subsidy"
+        return "Madhya Pradesh", "MPPKVVCL / MPMKVVCL (Urja Saksharta)", 0, f"Total {format_inr(central_sub)} Central Subsidy{hybrid_note}"
 
     # 6. Bihar (Prefix: 80 to 85)
     if (pin_prefix and 80 <= int(pin_prefix) <= 85) or any(k in text for k in ["bihar", "patna", "gaya", "muzaffarpur", "bhagalpur", "darbhanga"]):
-        return "Bihar", "NBPDCL / SBPDCL (Suvidha Portal)", 0, f"Total {format_inr(central_sub)} Central Subsidy"
+        return "Bihar", "NBPDCL / SBPDCL (Suvidha Portal)", 0, f"Total {format_inr(central_sub)} Central Subsidy{hybrid_note}"
 
     # 7. Haryana (Prefix: 12, 13)
     if pin_prefix in ["12", "13"] or any(k in text for k in ["haryana", "gurugram", "faridabad", "panipat", "karnal", "sonipat"]):
-        return "Haryana", "DHBVN / UHBVN", 0, f"Total {format_inr(central_sub)} Central Subsidy"
+        return "Haryana", "DHBVN / UHBVN", 0, f"Total {format_inr(central_sub)} Central Subsidy{hybrid_note}"
 
     # Default Pan-India
-    return "India (Pan-India)", "State Electricity Board / DISCOM", 0, f"Total {format_inr(central_sub)} Central Subsidy"
+    return "India (Pan-India)", "Local State DISCOM", 0, f"Total {format_inr(central_sub)} Central Subsidy{hybrid_note}"
 
 # ------------------------------------------------------------------
 # PARSERS & EXTRACTORS
@@ -226,7 +229,7 @@ def send_telegram_alert(state: dict, complete: bool = True):
         return
 
     kw, central_sub = estimate_kw_and_subsidy(state.get("bill") or 3000, state.get("property"))
-    region, discom, state_sub, _ = detect_region_and_subsidy(state.get("location") or "India", kw, central_sub)
+    region, discom, state_sub, _ = detect_region_and_subsidy(state.get("location") or "India", kw, central_sub, state.get("system"))
     total_benefit = central_sub + state_sub
 
     header = "🚨 *NEW SOLAR SATHI LEAD (BIJLIGYAAN)!* ☀️" if complete else "🔥 *HOT LEAD: PHONE CAPTURED!* 📞"
@@ -258,7 +261,7 @@ def upsert_lead(state: dict, complete: bool):
     ensure_csv()
 
     kw, central_sub = estimate_kw_and_subsidy(state.get("bill") or 3000, state.get("property"))
-    region, discom, state_sub, _ = detect_region_and_subsidy(state.get("location") or "India", kw, central_sub)
+    region, discom, state_sub, _ = detect_region_and_subsidy(state.get("location") or "India", kw, central_sub, state.get("system"))
     total_benefit = central_sub + state_sub
 
     row = [
@@ -326,7 +329,7 @@ def check_faq_interceptor(message: str, bill: Optional[int], kw_val: int) -> Opt
         return (
             "📄 **Sarkari Subsidy ke zaroori documents:**\n\n"
             "1. Latest Bijli Bill (Current Electricity Bill)\n"
-            "2. Identity Proof (Aadhaar Card)\n"
+            "2. Identity Proof [Aadhaar Redacted]\n"
             "3. Bank Passbook copy / Cancelled Cheque (DBT Subsidy Direct Transfer ke liye)\n\n"
         )
     return None
@@ -344,8 +347,8 @@ async def process_solar_sathi(history: List[HistoryMessage], message: str, bg_ta
         kw_val, _ = estimate_kw_and_subsidy(h_bill or 3000, h_prop)
         faq_ans = check_faq_interceptor(message, h_bill, kw_val)
         if faq_ans:
-            return f"{faq_ans}Hamare verified engineer aapse `{h_mob}` par contact karke exact feasibility guide karenge. 🙏"
-        return f"Dhanyawad {h_name} ji! Aapki report note hai. Hamari team aapse `{h_mob}` par sampark karegi. ☀️"
+            return f"{faq_ans}Aapke area ke verified solar installer aapse `{h_mob}` par contact karke exact site survey aur feasibility guide karenge. 🙏"
+        return f"Dhanyawad {h_name} ji! Aapki request note hai. Aapke area ke verified solar installer aapse `{h_mob}` par jald sampark karenge. ☀️"
 
     all_user_msgs = hist_user_msgs + [message]
     bill, prop, sys_t, loc, consent, mob, name = extract_state(all_user_msgs)
@@ -375,8 +378,7 @@ async def process_solar_sathi(history: List[HistoryMessage], message: str, bg_ta
 
     # Step 5: Installer Consent Pending (BIG VALUE REVEAL)
     kw, central_sub = estimate_kw_and_subsidy(bill, prop)
-    region, discom, state_sub, perk_text = detect_region_and_subsidy(loc, kw, central_sub)
-    total_benefit = central_sub + state_sub
+    region, discom, state_sub, perk_text = detect_region_and_subsidy(loc, kw, central_sub, sys_t)
     roof = get_roof_area_sqft(kw)
     u_min, u_max = kw * 4, kw * 5
 
@@ -387,7 +389,7 @@ async def process_solar_sathi(history: List[HistoryMessage], message: str, bg_ta
             f"🎉 **Badhaai ho! Aapke {loc} [{region}] ke liye Feasibility Report Ready Hai:**\n\n"
             f"☀️ **Recommended Plant:** ~{kw} kW ({sys_t})\n"
             f"⚡ **Daily Bijli:** ~{u_min} se {u_max} Units/din (85% bill zero)\n"
-            f"🏠 **Chhat ki Jagah:** ~{roof} shadow-free\n"
+            f"🏠 **Chhat ki Jagah:** ~{roof} shadow-free chhat\n"
             f"💰 **Subsidy Benefit:** **{perk_text}**\n"
             f"⚡ **DISCOM Authority:** {discom}\n\n"
             f"🛠️ **Kya aap chahte hain ki aapke area me BijliGyaan Verified & Empaneled Solar Installers ko free site inspection ke liye suggest kiya jaye?** (Neeche tap karein):"
@@ -423,7 +425,7 @@ async def process_solar_sathi(history: List[HistoryMessage], message: str, bg_ta
     upsert_lead(state_draft, complete=True)
     bg_tasks.add_task(send_telegram_alert, state_draft, True)
 
-    installer_note = "Hamare verified local installer aapse survey ke liye jald connect karenge." if "Yes" in consent else "Aapki feasibility technical report WhatsApp par bhej di jayegi."
+    installer_note = "Aapke area ke BijliGyaan verified solar installer free rooftop survey aur quotation ke liye aapse jald hi sampark karenge." if "Yes" in consent else "Aapki official feasibility technical report WhatsApp par bhej di jayegi."
 
     return (
         f"🎉 **Dhanyawad {name} ji! Aapki Solar Sathi Advisory Slip confirm ho gayi hai!** 🙏\n\n"
