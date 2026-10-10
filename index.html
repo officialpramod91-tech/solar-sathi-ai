@@ -1,37 +1,28 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
-    <title>Solar Sathi - AI Solar Consultant</title>
+    <title>Solar Sathi AI — National Solar Subsidy Advisory Desk | BijliGyaan</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        
-        html, body {
-            width: 100%;
-            height: 100%;
-            height: 100dvh;
-            overflow: hidden;
-            background: #f0f2f5;
+        * {
+            box-sizing: border-box !important;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
         }
 
-        .chat-launcher {
+        html, body {
+            width: 100% !important;
+            max-width: 100% !important;
+            height: 100%;
+            height: 100dvh;
+            overflow: hidden !important;
+            background: #ffffff;
             position: fixed;
-            bottom: 24px;
-            right: 24px;
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #0b4f9c, #063168);
-            color: #ffcc00;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 26px;
-            box-shadow: 0 10px 25px rgba(11, 79, 156, 0.35);
-            cursor: pointer;
-            z-index: 1000;
+            left: 0;
+            top: 0;
         }
 
         .app-container {
@@ -40,105 +31,177 @@
             left: 0;
             right: 0;
             bottom: 0;
-            width: 100vw;
+            width: 100% !important;
             height: 100%;
             height: 100dvh;
             background: #ffffff;
             display: flex;
             flex-direction: column;
-            overflow: hidden;
+            overflow: hidden !important;
             z-index: 999;
         }
 
+        /* ---------------- HEADER WITH BACKGROUND IMAGE & OVERLAY ---------------- */
         .app-header {
-            background: #0b4f9c;
-            color: white;
-            padding: 12px 14px;
+            position: relative;
+            background-color: #071e3d;
+            background-image: linear-gradient(180deg, rgba(7, 30, 61, 0.72) 0%, rgba(0, 35, 90, 0.88) 100%), url('header-bg.jpg');
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+            color: #ffffff;
+            padding: 12px 14px 22px 14px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             flex-shrink: 0;
-            border-bottom: 2px solid #ffcc00;
+            border-bottom: 3px solid #f97316;
             z-index: 10;
         }
-        .header-left { display: flex; align-items: center; gap: 10px; }
-        
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+            flex: 1;
+            z-index: 2;
+        }
+
         .avatar-box {
             position: relative;
-            width: 42px;
-            height: 42px;
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
             background: #ffffff;
             display: flex;
             align-items: center;
             justify-content: center;
-            border: 2px solid #ffcc00;
+            border: 2px solid #f97316;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.35);
             flex-shrink: 0;
+            overflow: hidden;
         }
+
         .avatar-box img {
             width: 100%;
             height: 100%;
-            border-radius: 50%;
             object-fit: cover;
         }
+
         .online-dot {
             position: absolute;
-            bottom: 0;
-            right: 0;
+            bottom: 1px;
+            right: 1px;
             width: 10px;
             height: 10px;
             border-radius: 50%;
-            background: #10b981;
-            border: 2px solid white;
+            background: #22c55e;
+            border: 2px solid #ffffff;
         }
 
-        .header-meta h2 { font-size: 1.05rem; font-weight: 700; line-height: 1.2; }
-        .header-meta .status-sub { font-size: 0.72rem; color: #dbeafe; display: flex; align-items: center; gap: 4px; }
-        .header-meta .tagline { font-size: 0.65rem; color: #ffcc00; font-weight: 500; }
+        .header-meta {
+            min-width: 0;
+            flex: 1;
+        }
 
-        .header-right { display: flex; align-items: center; gap: 12px; }
-        .solar-badge { font-size: 1.4rem; color: #ffcc00; }
+        .header-meta h2 {
+            font-size: 1.05rem;
+            font-weight: 800;
+            line-height: 1.2;
+            color: #ffffff;
+            letter-spacing: -0.3px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            text-shadow: 0 2px 6px rgba(0,0,0,0.7);
+        }
 
+        .header-meta h2 span {
+            color: #f97316;
+        }
+
+        .header-meta .status-sub {
+            font-size: 0.68rem;
+            color: #bae6fd;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 2px;
+            font-weight: 600;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+        }
+
+        .header-meta .tagline {
+            font-size: 0.62rem;
+            color: #fde047;
+            font-weight: 600;
+            margin-top: 1px;
+            text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+        }
+
+        .header-brand-strip {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background: linear-gradient(90deg, #ea580c, #f97316);
+            padding: 3px 10px;
+            border-top-left-radius: 8px;
+            font-size: 0.60rem;
+            color: #ffffff;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            box-shadow: -2px -2px 6px rgba(0, 0, 0, 0.3);
+            z-index: 5;
+        }
+
+        /* ---------------- CHAT BODY & READABILITY ---------------- */
         .chat-body {
             flex: 1;
             background: #f8fafc;
             overflow-y: auto;
+            overflow-x: hidden !important;
             -webkit-overflow-scrolling: touch;
             padding: 14px 12px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 14px;
             scroll-behavior: smooth;
+            width: 100% !important;
         }
 
         .msg-row {
             display: flex;
             align-items: flex-start;
             gap: 8px;
-            max-width: 82%;
+            max-width: 88%;
             width: fit-content;
         }
-        .msg-row.bot {
-            align-self: flex-start;
-        }
+
+        .msg-row.bot { align-self: flex-start; }
         .msg-row.user {
             align-self: flex-end;
             flex-direction: row-reverse;
         }
 
         .bubble-avatar {
-            width: 32px;
-            height: 32px;
+            width: 30px;
+            height: 30px;
             border-radius: 50%;
-            border: 1.5px solid #ffcc00;
+            border: 1.5px solid #0047ba;
             background: #ffffff;
             display: flex;
             align-items: center;
             justify-content: center;
-            overflow: hidden;
             flex-shrink: 0;
+            overflow: hidden;
             margin-top: 2px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
+
         .bubble-avatar img {
             width: 100%;
             height: 100%;
@@ -146,9 +209,9 @@
         }
 
         .bubble {
-            padding: 9px 13px;
-            font-size: 0.88rem;
-            line-height: 1.45;
+            padding: 12px 14px;
+            font-size: 0.90rem;
+            line-height: 1.5;
             white-space: pre-wrap;
             word-break: break-word;
             border-radius: 16px;
@@ -157,63 +220,87 @@
             text-align: left;
         }
 
+        /* 100% Contrast Text */
         .bot .bubble {
-            background: #edf5fd;
+            background: #ffffff;
             color: #0f172a;
             border-top-left-radius: 4px;
-            border: 1px solid #e0ecf8;
+            border: 1.5px solid #e2e8f0;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
         }
 
         .user .bubble {
-            background: #0b4f9c;
+            background: #071e3d;
             color: #ffffff;
             border-top-right-radius: 4px;
-            box-shadow: 0 2px 6px rgba(11, 79, 156, 0.15);
+            box-shadow: 0 3px 8px rgba(7, 30, 61, 0.2);
         }
 
         .bubble-time {
             font-size: 0.65rem;
-            margin-top: 4px;
+            margin-top: 5px;
             display: flex;
             align-items: center;
             justify-content: flex-end;
             gap: 4px;
             opacity: 0.75;
         }
-        .user .bubble-time { color: #dbeafe; }
+        .user .bubble-time { color: #93c5fd; }
         .bot .bubble-time { color: #64748b; }
 
+        /* ---------------- CHIPS ---------------- */
         .chips-list {
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
             margin-top: 2px;
-            padding-left: 40px;
+            padding-left: 38px;
+            width: 100%;
         }
+
         .chip-card {
             background: #ffffff;
-            border: 1.5px solid #e2e8f0;
-            padding: 8px 14px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
+            border: 1.5px solid #cbd5e1;
+            padding: 9px 15px;
+            border-radius: 22px;
+            font-size: 0.82rem;
+            font-weight: 700;
             display: flex;
             align-items: center;
             gap: 6px;
             cursor: pointer;
-        }
-        .chip-card.highlight {
-            background: #fffbeb;
-            border-color: #fde047;
-            color: #854d0e;
-        }
-        .chip-card.blue-outline {
-            border-color: #93c5fd;
-            color: #0b4f9c;
+            transition: all 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            color: #1e293b;
         }
 
+        .chip-card:hover, .chip-card:active {
+            transform: translateY(-1px) scale(0.98);
+        }
+
+        .chip-card.highlight {
+            background: #fff7ed;
+            border-color: #f97316;
+            color: #c2410c;
+        }
+
+        .chip-card.blue-outline {
+            background: #f0f7ff;
+            border-color: #38bdf8;
+            color: #0369a1;
+        }
+
+        .chip-card.trust-badge {
+            background: #f8fafc;
+            border-color: #e2e8f0;
+            color: #059669;
+            font-size: 0.74rem;
+            cursor: default;
+        }
+
+        /* ---------------- FOOTER ACTION BAR ---------------- */
         .footer-action-bar {
-            padding: 8px 10px 12px 10px;
+            padding: 8px 12px 10px 12px;
             background: #ffffff;
             border-top: 1px solid #f1f5f9;
             display: flex;
@@ -222,111 +309,105 @@
             flex-shrink: 0;
             width: 100%;
         }
+
         .input-pill {
             flex: 1;
+            min-width: 0;
             display: flex;
             align-items: center;
-            background: #ffffff;
+            background: #f8fafc;
             border: 1.5px solid #cbd5e1;
             border-radius: 24px;
-            padding: 0 14px;
+            padding: 0 16px;
             height: 42px;
-            min-width: 0;
+            transition: border-color 0.2s;
         }
+
+        .input-pill:focus-within {
+            border-color: #f97316;
+            background: #ffffff;
+        }
+
         .input-pill input {
             width: 100%;
             border: none;
             outline: none;
-            font-size: 0.92rem;
-            color: #1e293b;
+            font-size: 15px;
+            color: #0f172a;
             background: transparent;
         }
 
-        .btn-send-yellow {
-            width: 40px;
-            height: 40px;
+        .btn-send-theme {
+            width: 42px;
+            height: 42px;
             border-radius: 50%;
-            background: #facc15;
-            color: #0b4f9c;
+            background: linear-gradient(135deg, #ea580c, #f97316);
+            color: #ffffff;
             display: flex;
             align-items: center;
             justify-content: center;
             border: none;
-            font-size: 16px;
+            font-size: 15px;
             cursor: pointer;
+            box-shadow: 0 3px 8px rgba(234, 88, 12, 0.35);
             flex-shrink: 0;
         }
 
-        .typing-dots { display: flex; gap: 4px; padding: 10px 14px; }
-        .typing-dots span { width: 5px; height: 5px; background: #94a3b8; border-radius: 50%; animation: blink 1.4s infinite ease-in-out both; }
+        .typing-dots { display: flex; gap: 4px; padding: 12px 16px; }
+        .typing-dots span { width: 6px; height: 6px; background: #94a3b8; border-radius: 50%; animation: blink 1.4s infinite ease-in-out both; }
         .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
         .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
         @keyframes blink { 0%, 80%, 100% { transform: scale(0); opacity: 0.3; } 40% { transform: scale(1); opacity: 1; } }
-
-        @media (max-width: 768px) {
-            .chat-launcher { display: none !important; }
-        }
-
-        @media (min-width: 769px) {
-            .app-container {
-                top: auto;
-                left: auto;
-                bottom: 92px;
-                right: 24px;
-                width: 410px;
-                height: 650px;
-                border-radius: 24px;
-                box-shadow: 0 18px 50px rgba(0, 30, 70, 0.2);
-            }
-        }
     </style>
 </head>
 <body>
-
-<div class="chat-launcher"><i class="fa-solid fa-solar-panel"></i></div>
 
 <div class="app-container" id="appContainer">
     <div class="app-header">
         <div class="header-left">
             <div class="avatar-box">
-                <img src="logo.png" alt="Solar Sathi" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/8618/8618881.png';">
+                <img src="logo.png" alt="Solar Sathi AI" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/8618/8618881.png';">
                 <div class="online-dot"></div>
             </div>
             <div class="header-meta">
-                <h2>Solar Sathi</h2>
-                <div class="status-sub"><span style="color:#10b981;">●</span> Online | AI Solar Consultant</div>
-                <div class="tagline">Sahi Solar • Surakshit Bhavishya</div>
+                <h2>Solar Sathi <span>AI</span></h2>
+                <div class="status-sub"><span style="color:#22c55e;">●</span> Online | National Solar Subsidy Desk</div>
+                <div class="tagline">PM Surya Ghar Yojana • Pan-India DISCOM Advisory</div>
             </div>
         </div>
         <div class="header-right">
-            <div class="solar-badge"><i class="fa-solid fa-sun"></i></div>
+            <div class="header-brand-strip">
+                <i class="fa-solid fa-bolt"></i> By BijliGyaan
+            </div>
         </div>
     </div>
 
     <div class="chat-body" id="chatBody">
-        <!-- Clean Welcome Bubble without any static time -->
         <div class="msg-row bot">
-            <div class="bubble-avatar"><img src="logo.png" alt="bot" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/8618/8618881.png';"></div>
-            <div class="bubble">☀️ Namaste & Welcome to Solar Sathi! 🙏
+            <div class="bubble-avatar">
+                <img src="logo.png" alt="bot" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/8618/8618881.png';">
+            </div>
+            <div class="bubble">☀️ <b>Namaste! Solar Sathi AI Desk par aapka swagat hai.</b> 🙏
+<i>(BijliGyaan.in Official Solar & Subsidy Advisory Tool)</i>
 
-Please select your language / अपनी भाषा चुनें:
-1️⃣ English
-2️⃣ Hinglish (हिंदी)
+PM Surya Ghar Muft Bijli Yojana ke tehat apne ghar ke liye <b>Sarkari Subsidy (₹30,000 se ₹1,08,000 tak)</b> aur sahi system capacity check karein.
 
-(You can click below or directly type your monthly electricity bill)</div>
+Aapka monthly electricity bill lagbhag kitna aata hai? (Neeche tap karein ya likhein):</div>
         </div>
 
         <div class="chips-list active-chips">
-            <div class="chip-card highlight" onclick="sendMessage('2', '🇮🇳 Hinglish (हिंदी)')">🇮🇳 Hinglish (हिंदी)</div>
-            <div class="chip-card blue-outline" onclick="sendMessage('1', '🌐 English')">🌐 English</div>
+            <div class="chip-card highlight" onclick="sendMessage('2000', '⚡ ₹1,500 - ₹2,500')">⚡ ₹1,500 - ₹2,500</div>
+            <div class="chip-card highlight" onclick="sendMessage('3500', '⚡ ₹2,500 - ₹4,500')">⚡ ₹2,500 - ₹4,500</div>
+            <div class="chip-card blue-outline" onclick="sendMessage('5500', '⚡ ₹4,500 - ₹7,500')">⚡ ₹4,500 - ₹7,500</div>
+            <div class="chip-card blue-outline" onclick="sendMessage('8500', '⚡ ₹7,500 se zyada')">⚡ ₹7,500+</div>
         </div>
     </div>
 
     <div class="footer-action-bar">
         <div class="input-pill">
-            <input type="text" id="userInput" placeholder="Apna jawab likhein..." onkeypress="handleKey(event)">
+            <input type="text" id="userInput" placeholder="Apna jawab yahan likhein..." onkeypress="handleKey(event)">
         </div>
-        <button class="btn-send-yellow" id="sendBtn" onclick="sendMessage()">
+        <button class="btn-send-theme" id="sendBtn" onclick="sendMessage()">
             <i class="fa-solid fa-paper-plane"></i>
         </button>
     </div>
@@ -344,27 +425,14 @@ Please select your language / अपनी भाषा चुनें:
 
     function scrollToBottom() {
         const chat = document.getElementById("chatBody");
-        setTimeout(() => {
-            chat.scrollTop = chat.scrollHeight;
-        }, 120);
+        setTimeout(() => { chat.scrollTop = chat.scrollHeight; }, 120);
     }
 
     const userInput = document.getElementById("userInput");
-    userInput.addEventListener("focus", () => {
-        scrollToBottom();
-    });
+    userInput.addEventListener("focus", scrollToBottom);
 
     if (window.visualViewport) {
-        window.visualViewport.addEventListener("resize", () => {
-            scrollToBottom();
-        });
-    }
-
-    function isEnglishSelected() {
-        const first = conversationHistory.find(m => m.sender === "user");
-        if (!first) return false;
-        const txt = first.text.toLowerCase().trim();
-        return txt === "1" || txt === "english" || txt === "en" || txt.includes("english");
+        window.visualViewport.addEventListener("resize", scrollToBottom);
     }
 
     let isSending = false;
@@ -391,7 +459,11 @@ Please select your language / अपनी भाषा चुनें:
             const res = await fetch(BACKEND_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ message: backendPayload, history: conversationHistory })
+                body: JSON.stringify({ 
+                    message: backendPayload, 
+                    history: conversationHistory, 
+                    client: "bijligyaan" 
+                })
             });
 
             const data = await res.json();
@@ -406,7 +478,7 @@ Please select your language / अपनी भाषा चुनें:
             renderContextualChips(botReply);
         } catch (e) {
             removeElement(typingId);
-            appendBotMessage("Network Error: Local backend server offline hai.");
+            appendBotMessage("Network issue. Kripya connection check karein.");
         } finally {
             sendBtn.disabled = false;
             isSending = false;
@@ -428,11 +500,7 @@ Please select your language / अपनी भाषा चुनें:
     }
 
     function cleanIndent(rawStr) {
-        return rawStr
-            .split('\n')
-            .map(line => line.trim())
-            .join('\n')
-            .trim();
+        return rawStr.split('\n').map(line => line.trim()).join('\n').trim();
     }
 
     function appendBotMessage(text) {
@@ -440,7 +508,9 @@ Please select your language / अपनी भाषा चुनें:
         const div = document.createElement("div");
         div.className = "msg-row bot";
         div.innerHTML = `
-            <div class="bubble-avatar"><img src="logo.png" alt="bot" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/8618/8618881.png';"></div>
+            <div class="bubble-avatar">
+                <img src="logo.png" alt="bot" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/8618/8618881.png';">
+            </div>
             <div class="bubble">
                 ${escapeHtml(cleanIndent(text))}
                 <div class="bubble-time">${getTimeString()}</div>
@@ -452,26 +522,28 @@ Please select your language / अपनी भाषा चुनें:
 
     function renderContextualChips(reply) {
         const lower = reply.toLowerCase();
-        const eng = isEnglishSelected();
         let chips = [];
+        const input = document.getElementById("userInput");
 
-        if ((lower.includes("ghar ke liye") && lower.includes("dukan")) || (lower.includes("residential") && lower.includes("commercial"))) {
+        if (lower.includes("mobile") || lower.includes("whatsapp")) {
             chips = [
-                { label: "🏠 Ghar ke liye", val: eng ? "Home" : "ghar ke liye", style: "highlight" },
-                { label: "🏢 Dukan / Commercial", val: eng ? "Commercial" : "dukan ke liye", style: "blue-outline" }
+                { label: "🔒 100% Privacy Protected • Zero-Spam Guarantee by BijliGyaan", val: "", style: "trust-badge" }
             ];
-        } else if (lower.includes("on-grid") && lower.includes("hybrid")) {
+            input.placeholder = "10-digit WhatsApp number likhein...";
+            input.focus();
+        } else if (lower.includes("poora naam") || lower.includes("full name")) {
+            input.placeholder = "Apna poora naam likhein (e.g. Ramesh Kumar)...";
+            input.focus();
+        } else if (lower.includes("city") || lower.includes("pin code") || lower.includes("area") || lower.includes("state")) {
+            input.placeholder = "Apna City, State aur PIN Code likhein...";
+            input.focus();
+        } else if (lower.includes("dhanyawad") || lower.includes("confirm")) {
             chips = [
-                { label: "☀️ On-Grid (Bill Cut)", val: "On-Grid", style: "highlight" },
-                { label: "🔋 Hybrid (Battery Backup)", val: "Hybrid", style: "blue-outline" },
-                { label: "❓ System Difference?", val: eng ? "What is the difference between On-Grid and Hybrid?" : "On-grid aur Hybrid mein kya antar hai?", style: "blue-outline" }
+                { label: "⚡ Rozana kitni bijli banegi?", val: "Roz kitne units banenge?", style: "highlight" },
+                { label: "📄 Subsidy ke zaroori documents?", val: "Documents kaun se lagenge?", style: "blue-outline" },
+                { label: "💳 Zero Down EMI / Loan Scheme?", val: "EMI options kya hain?", style: "blue-outline" }
             ];
-        } else if (lower.includes("dhanyawad") || lower.includes("thank you")) {
-            chips = [
-                { label: "⚡ Ek din me kitne units?", val: eng ? "How many units will this system generate per day?" : "Ek din mein kitne units banenge?", style: "highlight" },
-                { label: "📄 Documents List", val: eng ? "What documents are required for subsidy?" : "Documents kaun kaun se lagenge?", style: "blue-outline" },
-                { label: "💳 EMI / Loan Options", val: eng ? "What are the loan and EMI options available?" : "EMI options kya hain?", style: "blue-outline" }
-            ];
+            input.placeholder = "Koi aur sawal poochhein...";
         }
 
         if (chips.length > 0) {
@@ -482,7 +554,9 @@ Please select your language / अपनी भाषा चुनें:
                 const btn = document.createElement("div");
                 btn.className = `chip-card ${c.style}`;
                 btn.innerText = c.label;
-                btn.onclick = () => sendMessage(c.val, c.label);
+                if (c.val) {
+                    btn.onclick = () => sendMessage(c.val, c.label);
+                }
                 wrap.appendChild(btn);
             });
             chat.appendChild(wrap);
@@ -501,7 +575,9 @@ Please select your language / अपनी भाषा चुनें:
         div.id = id;
         div.className = "msg-row bot";
         div.innerHTML = `
-            <div class="bubble-avatar"><img src="logo.png" alt="bot" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/8618/8618881.png';"></div>
+            <div class="bubble-avatar">
+                <img src="logo.png" alt="bot" onerror="this.onerror=null; this.src='https://cdn-icons-png.flaticon.com/512/8618/8618881.png';">
+            </div>
             <div class="bubble typing-dots">
                 <span></span><span></span><span></span>
             </div>
