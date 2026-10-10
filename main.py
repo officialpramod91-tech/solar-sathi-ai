@@ -1,8 +1,12 @@
 """
-Solar Sathi AI — Dedicated Official Engine
+Solar Sathi AI — Dedicated Engine (v9.0 Pan-India Production)
 Platform: BijliGyaan.in
-Scope: Pan-India PM Surya Ghar Advisory & Lead Generation
-Author: Pramod
+Features:
+- Pan-India Postal PIN Code Detection (UP, Delhi, RJ, MP, MH, Bihar, HR, etc.)
+- Strict 6-Step Lead State Funnel: Bill -> Property -> System -> Location -> Consent -> Phone & Name
+- Mid-Funnel Global FAQ Interceptor (EMI, Loans, Generation Units, Documents)
+- No Third-Party Multi-Tenant Routing (Dedicated BijliGyaan Engine)
+- Formatted INR & Real-time Telegram Push
 """
 
 import os
@@ -19,15 +23,14 @@ from pydantic import BaseModel
 IST = timezone(timedelta(hours=5, minutes=30))
 load_dotenv()
 
-# Alert Configurations
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 LEADS_FILE = "leads.csv"
 CSV_HEADERS = [
-    "Timestamp", "Name", "Mobile", "City_State", "DISCOM", "Monthly_Bill",
-    "System_kW", "Roof_Area_Req", "Central_Subsidy", "State_Subsidy", "Total_Benefit",
-    "Status"
+    "Timestamp", "Name", "Mobile", "City_PIN", "State_Region", "DISCOM", "Monthly_Bill",
+    "Property_Type", "System_Type", "Installer_Required", "System_kW", "Roof_Area_Req",
+    "Central_Subsidy", "State_Subsidy", "Total_Benefit", "Status"
 ]
 
 def ensure_csv():
@@ -72,65 +75,175 @@ def format_inr(number: int) -> str:
     return f"₹{','.join(groups)},{last_three}"
 
 # ------------------------------------------------------------------
-# PAN-INDIA LOCATION & SUBSIDY MAPPING
+# SYSTEM SIZING & MATH
 # ------------------------------------------------------------------
 
-def analyze_location_and_perks(location_text: str, kw: int, central_sub: int) -> Tuple[str, str, int, str]:
-    loc = location_text.lower().strip()
-    
-    # Uttar Pradesh (UPNEDA Extra State Subsidy up to Rs 30,000)
-    up_keywords = ["kanpur", "lucknow", "agra", "varanasi", "noida", "ghaziabad", "prayagraj", "gorakhpur", "up", "uttar pradesh", "2080", "2093", "2013", "2260"]
-    if any(k in loc for k in up_keywords):
-        state_sub = min(kw * 15000, 30000)
-        total = central_sub + state_sub
-        return "Uttar Pradesh", "UPNEDA / State DISCOM", state_sub, f"Total {format_inr(total)} (Central + UP State Subsidy)"
+def estimate_kw_and_subsidy(bill: int, prop_type: Optional[str] = "Residential") -> Tuple[int, int]:
+    if bill <= 1500: kw, sub = 1, 30000
+    elif bill <= 2800: kw, sub = 2, 60000
+    elif bill <= 4500: kw, sub = 3, 78000
+    elif bill <= 6500: kw, sub = 4, 78000
+    elif bill <= 8500: kw, sub = 5, 78000
+    else: kw, sub = 7, 78000
 
-    # Delhi NCR
-    if any(k in loc for k in ["delhi", "new delhi", "1100"]):
-        state_sub = min(kw * 2000, 10000)
-        total = central_sub + state_sub
-        return "Delhi NCR", "BSES / TPDDL (Solar Policy)", state_sub, f"Total {format_inr(total)} Subsidy"
-
-    # Pan-India Default (Central Scheme Standard)
-    return "India (Pan-India)", "Local State DISCOM", 0, f"Total {format_inr(central_sub)} Central Subsidy"
-
-def estimate_kw_and_subsidy(bill: int) -> Tuple[int, int]:
-    if bill <= 1500: return 1, 30000
-    elif bill <= 2800: return 2, 60000
-    elif bill <= 4500: return 3, 78000
-    elif bill <= 6500: return 4, 78000
-    elif bill <= 8500: return 5, 78000
-    else: return 7, 78000
+    if prop_type and "commercial" in prop_type.lower():
+        return kw, 0
+    return kw, sub
 
 def get_roof_area_sqft(kw: int) -> str:
     return f"{kw * 80} - {kw * 100} sq. ft."
 
 # ------------------------------------------------------------------
-# TELEGRAM ALERTS
+# PAN-INDIA POSTAL INTELLIGENCE
+# ------------------------------------------------------------------
+
+def detect_region_and_subsidy(location_text: str, kw: int, central_sub: int) -> Tuple[str, str, int, str]:
+    text = location_text.lower()
+    pin_match = re.search(r"\b([1-8]\d{5})\b", text)
+    pin = pin_match.group(1) if pin_match else ""
+    pin_prefix = pin[:2] if len(pin) >= 2 else ""
+
+    # 1. Uttar Pradesh (Prefix: 20 to 28)
+    if (pin_prefix and 20 <= int(pin_prefix) <= 28) or any(k in text for k in ["up", "uttar pradesh", "kanpur", "lucknow", "khalilabad", "basti", "gorakhpur", "varanasi", "noida", "ghaziabad", "agra", "meerut", "prayagraj"]):
+        state_sub = min(kw * 15000, 30000) if central_sub > 0 else 0
+        total = central_sub + state_sub
+        return "Uttar Pradesh", "UPNEDA / MVVNL / DVVNL / PVVNL / PuVVNL / KESCO", state_sub, f"Total {format_inr(total)} (Central + UP State UPNEDA Subsidy)"
+
+    # 2. Delhi NCR (Prefix: 11)
+    if pin_prefix == "11" or any(k in text for k in ["delhi", "new delhi"]):
+        return "Delhi NCR", "BSES / TPDDL (Delhi Solar Policy GBI)", 0, f"Total {format_inr(central_sub)} Central Subsidy + Monthly GBI Credit"
+
+    # 3. Rajasthan (Prefix: 30 to 34)
+    if (pin_prefix and 30 <= int(pin_prefix) <= 34) or any(k in text for k in ["rajasthan", "jaipur", "jodhpur", "kota", "udaipur", "bikaner", "ajmer"]):
+        return "Rajasthan", "JVVNL / AVVNL / JdVVNL", 0, f"Total {format_inr(central_sub)} Central Subsidy (Highest Solar Generation Belt)"
+
+    # 4. Maharashtra (Prefix: 40 to 44)
+    if (pin_prefix and 40 <= int(pin_prefix) <= 44) or any(k in text for k in ["maharashtra", "mumbai", "pune", "nagpur", "nashik", "thane"]):
+        return "Maharashtra", "MSEDCL (Mahavitaran) / Tata Power / Adani", 0, f"Total {format_inr(central_sub)} Central Subsidy (Fast Payback High Tariff Slab)"
+
+    # 5. Madhya Pradesh (Prefix: 45 to 48)
+    if (pin_prefix and 45 <= int(pin_prefix) <= 48) or any(k in text for k in ["mp", "madhya pradesh", "indore", "bhopal", "jabalpur", "gwalior"]):
+        return "Madhya Pradesh", "MPPKVVCL / MPMKVVCL (Urja Saksharta)", 0, f"Total {format_inr(central_sub)} Central Subsidy"
+
+    # 6. Bihar (Prefix: 80 to 85)
+    if (pin_prefix and 80 <= int(pin_prefix) <= 85) or any(k in text for k in ["bihar", "patna", "gaya", "muzaffarpur", "bhagalpur", "darbhanga"]):
+        return "Bihar", "NBPDCL / SBPDCL (Suvidha Portal)", 0, f"Total {format_inr(central_sub)} Central Subsidy"
+
+    # 7. Haryana (Prefix: 12, 13)
+    if pin_prefix in ["12", "13"] or any(k in text for k in ["haryana", "gurugram", "faridabad", "panipat", "karnal", "sonipat"]):
+        return "Haryana", "DHBVN / UHBVN", 0, f"Total {format_inr(central_sub)} Central Subsidy"
+
+    # Default Pan-India
+    return "India (Pan-India)", "State Electricity Board / DISCOM", 0, f"Total {format_inr(central_sub)} Central Subsidy"
+
+# ------------------------------------------------------------------
+# PARSERS & EXTRACTORS
+# ------------------------------------------------------------------
+
+def parse_bill(text: str) -> Optional[int]:
+    m = re.search(r"\b(\d{3,6})\b", text)
+    return int(m.group(1)) if m else None
+
+def parse_property(text: str) -> Optional[str]:
+    t = text.lower()
+    if any(k in t for k in ["dukan", "commercial", "factory", "shop", "office", "business"]):
+        return "Commercial"
+    if any(k in t for k in ["ghar", "residential", "home", "house"]):
+        return "Residential"
+    return None
+
+def parse_system(text: str) -> Optional[str]:
+    t = text.lower()
+    if "hybrid" in t: return "Hybrid"
+    if "off-grid" in t or "offgrid" in t: return "Off-Grid"
+    if "on-grid" in t or "ongrid" in t or "bill zero" in t: return "On-Grid"
+    return None
+
+def parse_location(text: str) -> Optional[str]:
+    t = text.strip()
+    if re.search(r"\b[1-8]\d{5}\b", t) or len(t) >= 3:
+        if not any(k in t.lower() for k in ["emi", "loan", "unit", "document", "kya hai", "kaise"]):
+            return t.title()
+    return None
+
+def parse_installer_consent(text: str) -> Optional[str]:
+    t = text.lower()
+    if any(k in t for k in ["haan", "yes", "installer", "connect", "suggest", "jarurat hai"]):
+        return "Yes (Connect Installer)"
+    if any(k in t for k in ["nahi", "no", "sirf pdf", "sirf slip", "only report", "jarurat nahi"]):
+        return "No (Only Report)"
+    return None
+
+def parse_mobile(text: str) -> Optional[str]:
+    m = re.search(r"\b([6-9]\d{9})\b", text)
+    if m: return m.group(1)
+    digits = re.sub(r"\D", "", text)
+    if len(digits) == 10 and digits[0] in "6789":
+        return digits
+    return None
+
+def parse_name(text: str) -> Optional[str]:
+    t = text.strip()
+    if re.search(r"\d", t): return None
+    words = t.split()
+    stopwords = {"haan", "han", "yes", "ok", "theek", "nahi", "no", "delhi", "mumbai", "patna", "kanpur", "khalilabad", "jaipur"}
+    if 1 <= len(words) <= 4 and t.lower() not in stopwords:
+        return t.title()
+    return None
+
+def extract_state(history_msgs: List[str]):
+    bill, prop, sys_t, loc, consent, mob, name = None, None, None, None, None, None, None
+    for msg in history_msgs:
+        if bill is None:
+            b = parse_bill(msg)
+            if b: bill = b; continue
+        if bill is not None and prop is None:
+            p = parse_property(msg)
+            if p: prop = p; continue
+        if prop is not None and sys_t is None:
+            s = parse_system(msg)
+            if s: sys_t = s; continue
+        if sys_t is not None and loc is None:
+            l = parse_location(msg)
+            if l: loc = l; continue
+        if loc is not None and consent is None:
+            c = parse_installer_consent(msg)
+            if c: consent = c; continue
+        if consent is not None and mob is None:
+            m = parse_mobile(msg)
+            if m: mob = m; continue
+        if mob is not None and name is None:
+            n = parse_name(msg)
+            if n: name = n; continue
+    return bill, prop, sys_t, loc, consent, mob, name
+
+# ------------------------------------------------------------------
+# TELEGRAM & CSV STORAGE
 # ------------------------------------------------------------------
 
 def send_telegram_alert(state: dict, complete: bool = True):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         return
 
-    kw, central_sub = estimate_kw_and_subsidy(state.get("bill") or 3000)
-    region, discom, state_sub, _ = analyze_location_and_perks(state.get("city") or "India", kw, central_sub)
+    kw, central_sub = estimate_kw_and_subsidy(state.get("bill") or 3000, state.get("property"))
+    region, discom, state_sub, _ = detect_region_and_subsidy(state.get("location") or "India", kw, central_sub)
     total_benefit = central_sub + state_sub
 
-    header = "🚨 *NEW SOLAR SATHI LEAD (BIJLIGYAAN)!* ☀️" if complete else "🔥 *HOT LEAD: MOBILE CAPTURED!* 📞"
-
+    header = "🚨 *NEW SOLAR SATHI LEAD (BIJLIGYAAN)!* ☀️" if complete else "🔥 *HOT LEAD: PHONE CAPTURED!* 📞"
     text = (
         f"{header}\n"
         f"━━━━━━━━━━━━━━━━━━━\n"
         f"👤 *Customer:* {state.get('name') or 'In Progress'}\n"
         f"📞 *Mobile:* `{state.get('mobile')}`\n"
-        f"📍 *Location:* {state.get('city') or 'Pending'}\n"
+        f"📍 *Location:* {state.get('location') or 'Pending'}\n"
         f"⚡ *DISCOM:* {discom} ({region})\n"
         f"💡 *Bill:* {format_inr(state.get('bill') or 0)} (~{kw} kW Recommended)\n"
-        f"💰 *Total Subsidy Benefit:* {format_inr(total_benefit)}\n"
+        f"🏠 *Property:* {state.get('property') or 'Residential'} | *System:* {state.get('system') or 'On-Grid'}\n"
+        f"🛠️ *Installer Required:* {state.get('consent') or 'Undecided'}\n"
+        f"💰 *Total Subsidy:* {format_inr(total_benefit)}\n"
         f"━━━━━━━━━━━━━━━━━━━\n"
         f"⏰ {datetime.now(IST).strftime('%d %b %Y, %I:%M %p')}\n"
-        f"🌐 *Source:* BijliGyaan.in Organic Portal"
+        f"🌐 *Source:* BijliGyaan Organic Tool"
     )
 
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -141,33 +254,35 @@ def send_telegram_alert(state: dict, complete: bool = True):
 
 def upsert_lead(state: dict, complete: bool):
     mobile = state.get("mobile")
-    if not mobile:
-        return
+    if not mobile: return
     ensure_csv()
 
-    kw, central_sub = estimate_kw_and_subsidy(state.get("bill") or 3000)
-    region, discom, state_sub, _ = analyze_location_and_perks(state.get("city") or "India", kw, central_sub)
+    kw, central_sub = estimate_kw_and_subsidy(state.get("bill") or 3000, state.get("property"))
+    region, discom, state_sub, _ = detect_region_and_subsidy(state.get("location") or "India", kw, central_sub)
     total_benefit = central_sub + state_sub
 
     row = [
         datetime.now(IST).strftime("%Y-%m-%d %H:%M:%S"),
         state.get("name") or "Pending",
         mobile,
-        state.get("city") or "Pending",
-        f"{discom} ({region})",
+        state.get("location") or "Pending",
+        region,
+        discom,
         format_inr(state.get("bill") or 0),
+        state.get("property") or "Residential",
+        state.get("system") or "On-Grid",
+        state.get("consent") or "Pending",
         f"{kw} kW",
         get_roof_area_sqft(kw),
         format_inr(central_sub),
         format_inr(state_sub),
         format_inr(total_benefit),
-        "COMPLETE" if complete else "PARTIAL (Phone Only)",
+        "COMPLETE" if complete else "PARTIAL",
     ]
 
     with open(LEADS_FILE, mode="r", newline="", encoding="utf-8") as f:
         rows = list(csv.reader(f))
-    if not rows:
-        rows = [CSV_HEADERS]
+    if not rows: rows = [CSV_HEADERS]
     header, data = rows[0], rows[1:]
     mobile_idx = header.index("Mobile") if "Mobile" in header else 2
 
@@ -177,8 +292,7 @@ def upsert_lead(state: dict, complete: bool):
             data[i] = row
             replaced = True
             break
-    if not replaced:
-        data.append(row)
+    if not replaced: data.append(row)
 
     with open(LEADS_FILE, mode="w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
@@ -186,172 +300,145 @@ def upsert_lead(state: dict, complete: bool):
         w.writerows(data)
 
 # ------------------------------------------------------------------
-# STRICT PARSERS
+# FAQ INTERCEPTOR
 # ------------------------------------------------------------------
 
-def parse_bill(text: str) -> Optional[int]:
-    m = re.search(r"\b(\d{3,6})\b", text)
-    return int(m.group(1)) if m else None
+def check_faq_interceptor(message: str, bill: Optional[int], kw_val: int) -> Optional[str]:
+    tl = message.lower()
 
-def parse_mobile(text: str) -> Optional[str]:
-    m = re.search(r"\b([6-9]\d{9})\b", text)
-    if m:
-        return m.group(1)
-    digits = re.sub(r"\D", "", text)
-    if len(digits) == 10 and digits[0] in "6789":
-        return digits
+    if any(w in tl for w in ["emi", "loan", "down payment", "finance", "byaj", "kisht"]):
+        return (
+            "💳 **PM Surya Ghar Solar Loan & EMI Options:**\n\n"
+            "• **Collateral-Free Loan:** SBI, Canara, PNB wagairah se sirf ~7% annual concessional interest par loan milta hai.\n"
+            "• **Zero Down Payment:** Kai banks 100% plant financing provide karte hain.\n"
+            "• **Easy EMI:** 36 se 120 mahine tak ki aasan kisht (starting ~₹1,400/mahina).\n\n"
+        )
+
+    if any(w in tl for w in ["unit", "units", "bijli", "banega", "produce", "generate"]):
+        u_min, u_max = kw_val * 4, kw_val * 5
+        return (
+            f"⚡ **Unit Generation Estimate:**\n\n"
+            f"Aapke **{kw_val} kW plant se rozana lagbhag {u_min} se {u_max} units bijli banegi** "
+            f"(mahine me ~{kw_val * 120} se {kw_val * 150} units) achhi dhoop par.\n\n"
+        )
+
+    if any(w in tl for w in ["document", "kagaz", "paper", "documents"]):
+        return (
+            "📄 **Sarkari Subsidy ke zaroori documents:**\n\n"
+            "1. Latest Bijli Bill (Current Electricity Bill)\n"
+            "2. Identity Proof (Aadhaar Card)\n"
+            "3. Bank Passbook copy / Cancelled Cheque (DBT Subsidy Direct Transfer ke liye)\n\n"
+        )
     return None
-
-def parse_name(text: str) -> Optional[str]:
-    t = text.strip()
-    if re.search(r"\d", t):
-        return None
-    words = t.split()
-    stopwords = {"haan", "han", "yes", "ok", "theek", "nahi", "no", "delhi", "mumbai", "patna", "kanpur", "lucknow"}
-    if 1 <= len(words) <= 4 and t.lower() not in stopwords:
-        return t.title()
-    return None
-
-def parse_city(text: str) -> Optional[str]:
-    t = text.strip()
-    if not t or "?" in t:
-        return None
-    return t.title()
-
-def extract_lead_state(messages: List[str]) -> Tuple[Optional[int], Optional[str], Optional[str], Optional[str]]:
-    bill, mobile, name, city = None, None, None, None
-    for msg in messages:
-        if bill is None:
-            b = parse_bill(msg)
-            if b:
-                bill = b
-                continue
-        if bill is not None and mobile is None:
-            m = parse_mobile(msg)
-            if m:
-                mobile = m
-                continue
-        if mobile is not None and name is None:
-            n = parse_name(msg)
-            if n:
-                name = n
-                continue
-        if name is not None and city is None:
-            c = parse_city(msg)
-            if c:
-                city = c
-                continue
-    return bill, mobile, name, city
 
 # ------------------------------------------------------------------
-# SOLAR SATHI AI CONVERSATION ENGINE
+# CORE CONVERSATION CONTROLLER
 # ------------------------------------------------------------------
 
 async def process_solar_sathi(history: List[HistoryMessage], message: str, bg_tasks: BackgroundTasks):
     hist_user_msgs = [h.text for h in history if h.sender == "user"]
-    h_bill, h_mobile, h_name, h_city = extract_lead_state(hist_user_msgs)
+    h_bill, h_prop, h_sys, h_loc, h_consent, h_mob, h_name = extract_state(hist_user_msgs)
 
-    # 1. Post-Completion FAQ Handler (When user asks queries after form submission)
-    if h_city is not None:
-        tl = message.lower()
-        kw_val, _ = estimate_kw_and_subsidy(h_bill or 3000)
-
-        # Generation Question
-        if any(w in tl for w in ["unit", "units", "bijli", "banega", "generate", "produce"]):
-            u_min, u_max = kw_val * 4, kw_val * 5
-            return (
-                f"☀️ Aapke **{kw_val} kW system se rozana lagbhag {u_min} se {u_max} units bijli banegi** "
-                f"(average 4–5 ghante achhi dhoop par).\n\n"
-                f"BijliGyaan feasibility report aapse jaldi share ki jayegi. 🙏"
-            )
-
-        # Document Question
-        if any(w in tl for w in ["document", "kagaz", "paper", "documents"]):
-            return (
-                "📄 **PM Surya Ghar Subsidy ke zaroori documents:**\n\n"
-                "1. Latest Electricity Bill (Bijli Bill)\n"
-                "2. Identity Proof (Aadhaar Card)\n"
-                "3. Bank Passbook copy ya Cancelled Cheque (Direct DBT subsidy transfer ke liye)\n\n"
-                "National portal par verification process bohot smooth hai. 🙏"
-            )
-
-        # Loan / EMI Question
-        if any(w in tl for w in ["emi", "loan", "down payment", "finance", "paisa"]):
-            return (
-                "💳 **Solar Subsidy Loan Options:**\n\n"
-                "• **Low Interest:** PM Surya Ghar ke tehat nationalized banks se 7% ke aas-paas concessional loan milta hai.\n"
-                "• **Tenure:** 3 saal se 10 saal tak ki aasan EMI suvidha available hai.\n\n"
-                "Complete details official feasibility PDF report mein shamil hongi. 🙏"
-            )
-
-        return f"Dhanyawad {h_name} ji! Aapki request safely registered hai. Hamare expert jald aapse `{h_mobile}` par contact karenge. ☀️"
+    # 1. Post-Completion FAQ Check
+    if h_name is not None:
+        kw_val, _ = estimate_kw_and_subsidy(h_bill or 3000, h_prop)
+        faq_ans = check_faq_interceptor(message, h_bill, kw_val)
+        if faq_ans:
+            return f"{faq_ans}Hamare verified engineer aapse `{h_mob}` par contact karke exact feasibility guide karenge. 🙏"
+        return f"Dhanyawad {h_name} ji! Aapki report note hai. Hamari team aapse `{h_mob}` par sampark karegi. ☀️"
 
     all_user_msgs = hist_user_msgs + [message]
-    bill, mobile, name, city = extract_lead_state(all_user_msgs)
+    bill, prop, sys_t, loc, consent, mob, name = extract_state(all_user_msgs)
 
-    # 2. Step 1: Bill Pending
+    # Calculate active kw for FAQ reference
+    kw_current, _ = estimate_kw_and_subsidy(bill or 3000, prop)
+    faq_snippet = check_faq_interceptor(message, bill, kw_current)
+
+    # Step 1: Bill Pending
     if bill is None:
         return "☀️ Namaste! PM Surya Ghar Muft Bijli Yojana ke tehat apne ghar ke liye Sarkari Subsidy check karein. Aapka monthly bijli bill kitna aata hai?"
 
-    # 3. Step 2: Mobile Pending (Value-First Reveal & Smart Gate)
-    if mobile is None:
-        last_b = parse_bill(message)
-        if last_b:
-            kw, central_sub = estimate_kw_and_subsidy(bill)
-            roof = get_roof_area_sqft(kw)
-            u_min, u_max = kw * 4, kw * 5
-            return (
-                f"🎉 **Badhaai ho! Aapke {format_inr(bill)} bill ke liye Feasibility Calculation Ready Hai:**\n\n"
-                f"☀️ **Recommended System:** ~{kw} kW On-Grid Solar Plant\n"
-                f"⚡ **Rozana Bijli:** ~{u_min} se {u_max} Units/din (Monthly 85% bill zero)\n"
-                f"🏠 **Chhat ki Jagah:** ~{roof} shadow-free rooftop\n"
-                f"💰 **Central Subsidy Benefit:** {format_inr(central_sub)} (Direct Bank DBT)\n\n"
-                f"🔒 **DISCOM Net-Metering Eligibility, Cost Breakdown aur Official PDF lock hai.**\n\n"
-                f"Ise direct WhatsApp par receive karne ke liye apna **10-digit WhatsApp Number** likhein:"
-            )
-        return "⚠️ Kripya apna valid **10-digit WhatsApp number** likhein taaki feasibility report share ki ja sake:"
+    # Step 2: Property Type Pending
+    if prop is None:
+        prefix = f"{faq_snippet}\n" if faq_snippet else ""
+        return prefix + "Aap solar plant kis jagah ke liye lagwana chahte hain? (Neeche tap karein):"
 
-    # 4. Step 3: Mobile Captured -> Instant Telegram Alert
-    state_draft = {"bill": bill, "mobile": mobile, "name": name, "city": city}
+    # Step 3: System Type Pending
+    if sys_t is None:
+        prefix = f"{faq_snippet}\n" if faq_snippet else ""
+        return prefix + "Aapko kis type ka solar system chahiye? (Neeche select karein):"
+
+    # Step 4: Location / PIN Code Pending
+    if loc is None:
+        prefix = f"{faq_snippet}\n" if faq_snippet else ""
+        return prefix + "Apne area ka **6-digit PIN Code ya City** likhein (jaise: 272175, 302001, 800001, 400001) taaki aapke state ki extra subsidy aur DISCOM rules calculate ho sakein:"
+
+    # Step 5: Installer Consent Pending (BIG VALUE REVEAL)
+    kw, central_sub = estimate_kw_and_subsidy(bill, prop)
+    region, discom, state_sub, perk_text = detect_region_and_subsidy(loc, kw, central_sub)
+    total_benefit = central_sub + state_sub
+    roof = get_roof_area_sqft(kw)
+    u_min, u_max = kw * 4, kw * 5
+
+    if consent is None:
+        prefix = f"{faq_snippet}\n" if faq_snippet else ""
+        return (
+            prefix +
+            f"🎉 **Badhaai ho! Aapke {loc} [{region}] ke liye Feasibility Report Ready Hai:**\n\n"
+            f"☀️ **Recommended Plant:** ~{kw} kW ({sys_t})\n"
+            f"⚡ **Daily Bijli:** ~{u_min} se {u_max} Units/din (85% bill zero)\n"
+            f"🏠 **Chhat ki Jagah:** ~{roof} shadow-free\n"
+            f"💰 **Subsidy Benefit:** **{perk_text}**\n"
+            f"⚡ **DISCOM Authority:** {discom}\n\n"
+            f"🛠️ **Kya aap chahte hain ki aapke area me BijliGyaan Verified & Empaneled Solar Installers ko free site inspection ke liye suggest kiya jaye?** (Neeche tap karein):"
+        )
+
+    # Step 6: Mobile Pending
+    state_draft = {
+        "bill": bill, "property": prop, "system": sys_t, "location": loc,
+        "consent": consent, "mobile": mob, "name": name
+    }
+
+    if mob is None:
+        prefix = f"{faq_snippet}\n" if faq_snippet else ""
+        return (
+            prefix +
+            f"🔒 **Aapki Official Feasibility Slip & {discom} Solar Quote PDF ready hai!**\n\n"
+            f"Ise direct WhatsApp par secure receive karne ke liye apna **10-digit WhatsApp Number** likhein:"
+        )
+
+    # Step 7: Mobile Just Captured -> Push Telegram Hot Alert & Ask Name
     upsert_lead(state_draft, complete=False)
 
     if parse_mobile(message) and name is None:
         bg_tasks.add_task(send_telegram_alert, state_draft, False)
-        return "✅ **WhatsApp Number confirm ho gaya!**\n\nOfficial proposal aur slip generate karne ke liye kripya apna **Poora Naam (Full Name)** likhiye:"
+        return "✅ **WhatsApp Number confirm ho gaya!**\n\nOfficial document aur subsidy slip par registration ke liye apna **Poora Naam (Full Name)** likhiye:"
 
-    # 5. Step 4: Name Pending
     if name is None:
-        return "Kripya apna **Poora Naam** batayein:"
+        prefix = f"{faq_snippet}\n" if faq_snippet else ""
+        return prefix + "Kripya apna **Poora Naam** batayein:"
 
-    # 6. Step 5: Name Captured -> Ask Location
-    if city is None:
-        last_n = parse_name(message)
-        if last_n:
-            return f"Dhanyawad {name} ji! 🙏 Apne state ki local DISCOM rules aur extra state subsidy ke liye apna **City/State aur PIN Code** likhein:"
-        return "Kripya apna City, State aur PIN Code likhein:"
-
-    # 7. Step 6: Complete Lead Captured
+    # Step 8: Completed Flow
     state_draft["name"] = name
-    state_draft["city"] = city
     upsert_lead(state_draft, complete=True)
     bg_tasks.add_task(send_telegram_alert, state_draft, True)
 
-    kw, central_sub = estimate_kw_and_subsidy(bill)
-    region, discom, state_sub, perk_text = analyze_location_and_perks(city, kw, central_sub)
+    installer_note = "Hamare verified local installer aapse survey ke liye jald connect karenge." if "Yes" in consent else "Aapki feasibility technical report WhatsApp par bhej di jayegi."
 
     return (
         f"🎉 **Dhanyawad {name} ji! Aapki Solar Sathi Advisory Slip confirm ho gayi hai!** 🙏\n\n"
-        f"📋 **System Summary:**\n"
-        f"• Plant Capacity: ~{kw} kW On-Grid System\n"
-        f"• Location & DISCOM: {city} [{discom}]\n"
-        f"• Subsidy Category: {perk_text}\n"
-        f"• Monthly Bachat: Lagbhag {format_inr(int(bill * 0.85))}/mahina\n\n"
-        f"Aapki detailed quotation PDF slip ready ho rahi hai aur jald WhatsApp par share kar di jayegi. ☀️\n\n"
-        f"*(Aap abhi bhi units generation, loan ya documents ke baare mein sawal pooch sakte hain)*"
+        f"📋 **Booking Summary:**\n"
+        f"• Capacity: ~{kw} kW {sys_t} ({prop})\n"
+        f"• Location: {loc} [{region}]\n"
+        f"• Approved Subsidy: {perk_text}\n"
+        f"• Monthly Bachat: Lagbhag {format_inr(int(bill * 0.85))}/mahina\n"
+        f"• Installer Recommendation: {consent}\n\n"
+        f"{installer_note} ☀️\n\n"
+        f"*(Aap abhi bhi units generation, loan EMI ya documents ke baare mein sawal pooch sakte hain)*"
     )
 
 # ------------------------------------------------------------------
-# APP ENDPOINTS
+# APP ROUTING
 # ------------------------------------------------------------------
 
 @app.get("/health")
