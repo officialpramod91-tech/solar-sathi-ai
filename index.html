@@ -41,7 +41,7 @@
             z-index: 999;
         }
 
-        /* ---------------- HEADER WITH BACKGROUND IMAGE & OVERLAY ---------------- */
+        /* ---------------- HEADER WITH BG IMAGE & DARK OVERLAY ---------------- */
         .app-header {
             position: relative;
             background-color: #071e3d;
@@ -158,7 +158,7 @@
             z-index: 5;
         }
 
-        /* ---------------- CHAT BODY & READABILITY ---------------- */
+        /* ---------------- CHAT BODY ---------------- */
         .chat-body {
             flex: 1;
             background: #f8fafc;
@@ -220,7 +220,6 @@
             text-align: left;
         }
 
-        /* 100% Contrast Text */
         .bot .bubble {
             background: #ffffff;
             color: #0f172a;
@@ -290,6 +289,12 @@
             color: #0369a1;
         }
 
+        .chip-card.green-outline {
+            background: #f0fdf4;
+            border-color: #22c55e;
+            color: #15803d;
+        }
+
         .chip-card.trust-badge {
             background: #f8fafc;
             border-color: #e2e8f0;
@@ -298,7 +303,7 @@
             cursor: default;
         }
 
-        /* ---------------- FOOTER ACTION BAR ---------------- */
+        /* ---------------- FOOTER ---------------- */
         .footer-action-bar {
             padding: 8px 12px 10px 12px;
             background: #ffffff;
@@ -395,6 +400,7 @@ PM Surya Ghar Muft Bijli Yojana ke tehat apne ghar ke liye <b>Sarkari Subsidy (�
 Aapka monthly electricity bill lagbhag kitna aata hai? (Neeche tap karein ya likhein):</div>
         </div>
 
+        <!-- 1-Tap Bill Selector Chips -->
         <div class="chips-list active-chips">
             <div class="chip-card highlight" onclick="sendMessage('2000', '⚡ ₹1,500 - ₹2,500')">⚡ ₹1,500 - ₹2,500</div>
             <div class="chip-card highlight" onclick="sendMessage('3500', '⚡ ₹2,500 - ₹4,500')">⚡ ₹2,500 - ₹4,500</div>
@@ -461,8 +467,7 @@ Aapka monthly electricity bill lagbhag kitna aata hai? (Neeche tap karein ya lik
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
                     message: backendPayload, 
-                    history: conversationHistory, 
-                    client: "bijligyaan" 
+                    history: conversationHistory 
                 })
             });
 
@@ -525,23 +530,55 @@ Aapka monthly electricity bill lagbhag kitna aata hai? (Neeche tap karein ya lik
         let chips = [];
         const input = document.getElementById("userInput");
 
-        if (lower.includes("mobile") || lower.includes("whatsapp")) {
+        // 1. Property Type Chips
+        if (lower.includes("kis jagah ke liye lagwana") || lower.includes("ghar ya dukan")) {
+            chips = [
+                { label: "🏠 Ghar ke liye (Residential Subsidy)", val: "Ghar ke liye", style: "highlight" },
+                { label: "🏢 Dukan / Commercial (Tax Benefit)", val: "Dukan ke liye", style: "blue-outline" }
+            ];
+            input.placeholder = "Ghar ya Dukan chunein...";
+        }
+        // 2. System Type Chips
+        else if (lower.includes("kis type ka solar system") || lower.includes("system chahiye")) {
+            chips = [
+                { label: "☀️ On-Grid (Net Metering • Bill Zero)", val: "On-Grid", style: "highlight" },
+                { label: "🔋 Hybrid (Battery Backup + Subsidy)", val: "Hybrid", style: "blue-outline" },
+                { label: "⚡ Off-Grid (Bina Grid ke Backup)", val: "Off-Grid", style: "blue-outline" }
+            ];
+            input.placeholder = "System type select karein...";
+        }
+        // 3. Location / PIN
+        else if (lower.includes("6-digit pin code") || lower.includes("pin code ya city")) {
+            input.placeholder = "Apna 6-digit PIN Code likhein (e.g. 272175)...";
+            input.focus();
+        }
+        // 4. Installer Recommendation Consent Chips
+        else if (lower.includes("empaneled solar installers") || lower.includes("suggest kiya jaye")) {
+            chips = [
+                { label: "✅ Haan, Verified Installer Suggest Karein", val: "Haan, Verified Installer Suggest Karein", style: "green-outline" },
+                { label: "📄 Nahi, Sirf Calculation Slip Chahiye", val: "Nahi, Sirf Calculation Slip Chahiye", style: "blue-outline" }
+            ];
+            input.placeholder = "Apni pasand chunein...";
+        }
+        // 5. Mobile
+        else if (lower.includes("whatsapp number") || lower.includes("mobile")) {
             chips = [
                 { label: "🔒 100% Privacy Protected • Zero-Spam Guarantee by BijliGyaan", val: "", style: "trust-badge" }
             ];
             input.placeholder = "10-digit WhatsApp number likhein...";
             input.focus();
-        } else if (lower.includes("poora naam") || lower.includes("full name")) {
-            input.placeholder = "Apna poora naam likhein (e.g. Ramesh Kumar)...";
+        }
+        // 6. Name
+        else if (lower.includes("poora naam") || lower.includes("full name")) {
+            input.placeholder = "Apna Poora Naam likhein (e.g. Ramesh Kumar)...";
             input.focus();
-        } else if (lower.includes("city") || lower.includes("pin code") || lower.includes("area") || lower.includes("state")) {
-            input.placeholder = "Apna City, State aur PIN Code likhein...";
-            input.focus();
-        } else if (lower.includes("dhanyawad") || lower.includes("confirm")) {
+        }
+        // 7. Post completion FAQs
+        else if (lower.includes("dhanyawad") || lower.includes("booking summary")) {
             chips = [
-                { label: "⚡ Rozana kitni bijli banegi?", val: "Roz kitne units banenge?", style: "highlight" },
-                { label: "📄 Subsidy ke zaroori documents?", val: "Documents kaun se lagenge?", style: "blue-outline" },
-                { label: "💳 Zero Down EMI / Loan Scheme?", val: "EMI options kya hain?", style: "blue-outline" }
+                { label: "⚡ Roz kitne units banenge?", val: "Roz kitne units banenge?", style: "highlight" },
+                { label: "💳 Loan aur EMI Options?", val: "EMI options kya hain?", style: "blue-outline" },
+                { label: "📄 Documents list?", val: "Documents kaun se lagenge?", style: "blue-outline" }
             ];
             input.placeholder = "Koi aur sawal poochhein...";
         }
